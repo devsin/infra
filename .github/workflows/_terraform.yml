@@ -195,4 +195,7 @@ jobs:
         run: terraform init -no-color
 
       - name: Terraform Apply
-        run: terraform apply -no-color -auto-approve tfplan
+        run: |
+          # Unset TF_VAR_* env vars — saved plan already contains all variable values
+          for v in ${!TF_VAR_*}; do unset "$v"; done
+          terraform apply -no-color -auto-approve tfplan
