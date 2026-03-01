@@ -8,7 +8,7 @@
 #
 # Behavior:
 #   - PR:            terraform plan (comment on PR)
-#   - Push to main:  terraform apply -auto-approve
+#   - Push to main:  terraform plan + apply -auto-approve
 # ==============================================================================
 
 name: "Terraform GCP"
@@ -64,6 +64,10 @@ env:
   TF_VAR_prefix: ${{ vars.GCP_ORG_PREFIX }}
   TF_VAR_org_name: ${{ vars.GCP_ORG_NAME }}
   TF_VAR_org_domain: ${{ vars.GCP_ORG_DOMAIN }}
+  # Phase 1+ config — brands and state bucket (non-sensitive, but org-specific)
+  TF_VAR_state_bucket: ${{ vars.GCP_STATE_BUCKET }}
+  TF_VAR_brands: ${{ vars.GCP_BRANDS }}
+  TF_VAR_enable_sandbox: ${{ vars.GCP_ENABLE_SANDBOX }}
   # Repo identity — always available from GitHub context (no storage needed)
   TF_VAR_github_owner: ${{ github.repository_owner }}
   TF_VAR_github_repo: ${{ github.event.repository.name }}

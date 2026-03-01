@@ -35,9 +35,9 @@ resource "github_actions_variable" "this" {
 # ------------------------------------------------------------------------------
 # Deployment Environments
 #
-# Creates environments used by CI/CD workflows for apply gating.
-# Reviewers and branch policies can be added later via the GitHub UI
-# or by extending this resource.
+# Creates environments used by CI/CD workflows for deploy tracking.
+# Apply gating is handled via workflow_dispatch (manual trigger) in
+# the CI/CD workflows — no paid-plan environment protection needed.
 # ------------------------------------------------------------------------------
 
 resource "github_repository_environment" "this" {

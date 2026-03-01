@@ -75,6 +75,11 @@ actions_variables = {
   GCP_ORG_NAME   = "" # e.g. "mycompany"
   GCP_ORG_DOMAIN = "" # e.g. "mycompany.com"
 
+  # Phase 1+ config — brands and state bucket (non-sensitive, but org-specific)
+  GCP_STATE_BUCKET   = "" # e.g. "bkt-prj-b-seed-XXXX-tfstate" → Phase 0: seed_state_bucket_name
+  GCP_BRANDS         = "" # JSON: [{"name":"brand","domain":"brand.com","envs":["dev","prod"]}]
+  GCP_ENABLE_SANDBOX = "" # "true" or "false"
+
   # Public mirror target (owner/repo)
   MIRROR_REPO = "" # e.g. "myuser/infra"
 
@@ -84,7 +89,8 @@ actions_variables = {
 
 # --- Deployment Environments ---
 #
-# These gate CI/CD applies. Add reviewers later via GitHub UI.
+# Used for deploy tracking in the GitHub Actions UI.
+# Apply gating is handled via manual workflow_dispatch — no paid plan needed.
 
 environments = [
   "gcp-bootstrap",

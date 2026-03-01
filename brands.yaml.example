@@ -4,6 +4,11 @@
 # This file defines all brands/products managed by this infrastructure.
 # Provider-agnostic — each brand specifies which providers it uses.
 #
+# NOTE: Copy to brands.yaml and fill in your actual values.
+#       brands.yaml is gitignored — it contains org-specific brand details.
+#       In CI, the Terraform brands variable is injected via GitHub Actions
+#       variable GCP_BRANDS (JSON format).
+#
 # Used by:
 #   - Terraform tfvars generation (scripts/scaffold.sh)
 #   - GitOps directory scaffolding
@@ -23,26 +28,37 @@ brands:
   #
   #   # Brand-scoped providers (each brand has its own tenant)
   #   providers:
-  #     github_org: acme-org                  # GitHub organization name
-  #     railway_workspace: acme               # Railway workspace/team name
-  #     supabase_org_id: org-xxxxx            # Supabase organization ID
+  #     github_org: acme-org
+  #     railway_workspace: acme
+  #     supabase_org_id: org-xxxxx
   #
-  # - name: widgets
-  #   domain: widgets.io
-  #   environments: [dev, prod]
-  #   clouds: [aws]
-  #   providers:
-  #     github_org: widgets-dev
-  #     railway_workspace: widgets
-  #     supabase_org_id: org-yyyyy
-  #
-  # ─── Provider fields reference ───
-  #
-  #   clouds[]                       — Org-scoped: aws, gcp, digitalocean, linode
-  #   providers.github_org           — GitHub organization for this brand
-  #   providers.railway_workspace    — Railway workspace/team for this brand
-  #   providers.supabase_org_id      — Supabase organization ID for this brand
-  #   providers.digitalocean_team    — (future) DigitalOcean team
-  #   providers.linode_account       — (future) Linode account
-  #
-  # To add a new provider: add a field here and create <provider>/stacks/ at repo root.
+  #   # Per-environment configuration
+  #   envs:
+  #     dev:
+  #       web_domain: dev.acme.com
+  #       api_domain: dev.api.acme.com
+  #       supabase_url: https://xxxxxx.supabase.co
+  #       supabase_ref: xxxxxx
+  #     prod:
+  #       web_domain: acme.com
+  #       api_domain: api.acme.com
+  #       supabase_url: https://yyyyyy.supabase.co
+  #       supabase_ref: yyyyyy
+
+# ─── Provider fields reference ───
+#
+#   clouds[]                       — Org-scoped: aws, gcp, digitalocean, linode
+#   providers.github_org           — GitHub organization for this brand
+#   providers.railway_workspace    — Railway workspace/team for this brand
+#   providers.supabase_org_id      — Supabase organization ID for this brand
+#   providers.digitalocean_team    — (future) DigitalOcean team
+#   providers.linode_account       — (future) Linode account
+#
+# ─── CI/CD integration ───
+#
+#   The brands list (name + domain + envs only) is stored as a GitHub Actions
+#   variable in JSON format for Terraform consumption:
+#
+#   GCP_BRANDS = '[{"name":"acme","domain":"acme.com","envs":["dev","prod"]}]'
+#
+# To add a new provider: add a field here and create <provider>/stacks/ at repo root.
