@@ -75,6 +75,7 @@ locals {
     "storage.googleapis.com",
     "logging.googleapis.com",
     "cloudasset.googleapis.com",
+    "orgpolicy.googleapis.com",
   ]
 }
 

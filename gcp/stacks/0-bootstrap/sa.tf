@@ -33,6 +33,7 @@ locals {
       "roles/logging.configWriter",
       "roles/resourcemanager.organizationAdmin",
       "roles/resourcemanager.organizationViewer",
+      "roles/resourcemanager.folderCreator",
       "roles/accesscontextmanager.policyAdmin",
       "roles/essentialcontacts.admin",
       "roles/resourcemanager.tagAdmin",
