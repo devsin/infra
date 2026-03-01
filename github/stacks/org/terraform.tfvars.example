@@ -62,11 +62,17 @@ actions_secrets = {
 # Service account emails from GCP Phase 0 outputs
 
 actions_variables = {
+  # Service account emails (from GCP Phase 0 outputs)
   GCP_BOOTSTRAP_SA = "" # → terraform output -raw bootstrap_sa_email
   GCP_ORG_SA       = "" # → terraform output -raw org_sa_email
   GCP_ENV_SA       = "" # → terraform output -raw env_sa_email
   GCP_NET_SA       = "" # → terraform output -raw net_sa_email
   GCP_PROJ_SA      = "" # → terraform output -raw proj_sa_email
+
+  # Non-sensitive org config — injected as TF_VAR_* in CI
+  GCP_ORG_PREFIX = "" # e.g. "mc"
+  GCP_ORG_NAME   = "" # e.g. "mycompany"
+  GCP_ORG_DOMAIN = "" # e.g. "mycompany.com"
 }
 
 # --- Deployment Environments ---

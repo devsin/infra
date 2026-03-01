@@ -57,10 +57,16 @@ permissions:
 env:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
-  # Sensitive Terraform variables — injected from GitHub Actions secrets
-  # Empty values are ignored; Terraform only errors if a required var is missing.
+  # Sensitive vars — from GitHub Actions secrets
   TF_VAR_org_id: ${{ secrets.GCP_ORG_ID }}
   TF_VAR_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT }}
+  # Non-sensitive org config — from GitHub Actions variables
+  TF_VAR_prefix: ${{ vars.GCP_ORG_PREFIX }}
+  TF_VAR_org_name: ${{ vars.GCP_ORG_NAME }}
+  TF_VAR_org_domain: ${{ vars.GCP_ORG_DOMAIN }}
+  # Repo identity — always available from GitHub context (no storage needed)
+  TF_VAR_github_owner: ${{ github.repository_owner }}
+  TF_VAR_github_repo: ${{ github.event.repository.name }}
 
 jobs:
   # ============================================================================
@@ -140,7 +146,7 @@ jobs:
 
       - name: Upload Plan Artifact
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tfplan-${{ inputs.phase }}
           path: ${{ inputs.working_directory }}/tfplan
