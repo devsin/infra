@@ -1,10 +1,9 @@
 # ==============================================================================
 # Mirror to Public Repository
 #
-# Pushes a filtered copy of this repo to a public mirror, excluding:
-#   - .github/  (workflows contain org-specific CI config)
-#
-# All Terraform code is visible publicly; CI/CD internals remain private.
+# Pushes a copy of this repo to a public mirror.
+# Workflows are included but gated with `if: github.repository == '...'`
+# so they are visible but never trigger on the mirror.
 #
 # Required setup:
 #   Secrets:
@@ -21,7 +20,7 @@ on:
 
 jobs:
   mirror:
-    name: "Filter & push to public mirror"
+    name: "Push to public mirror"
     runs-on: ubuntu-latest
     # Skip if no mirror target is configured
     if: vars.MIRROR_REPO != ''
@@ -32,12 +31,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Install git-filter-repo
-        run: pip install git-filter-repo --quiet
-
-      - name: Strip .github/ from history
-        run: git filter-repo --path .github --invert-paths --force
 
       - name: Push to public mirror
         env:

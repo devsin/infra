@@ -37,6 +37,7 @@ on:
 jobs:
   terraform:
     name: "Bootstrap"
+    if: vars.CI_ENABLED == 'true'
     uses: ./.github/workflows/_terraform.yml
     with:
       working_directory: gcp/stacks/0-bootstrap

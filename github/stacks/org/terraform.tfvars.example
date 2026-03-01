@@ -77,6 +77,9 @@ actions_variables = {
 
   # Public mirror target (owner/repo)
   MIRROR_REPO = "" # e.g. "myuser/infra"
+
+  # Set to "true" to enable CI/CD workflows (keeps them inert on mirrors/forks)
+  CI_ENABLED = "true"
 }
 
 # --- Deployment Environments ---

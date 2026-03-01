@@ -36,6 +36,7 @@ on:
 jobs:
   terraform:
     name: "Organization"
+    if: vars.CI_ENABLED == 'true'
     uses: ./.github/workflows/_terraform.yml
     with:
       working_directory: gcp/stacks/1-org
