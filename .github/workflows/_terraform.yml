@@ -1,0 +1,188 @@
+# ==============================================================================
+# Reusable Terraform Workflow — GCP with Workload Identity Federation
+#
+# Called by per-phase workflows (gcp-bootstrap.yml, gcp-org.yml, etc.)
+#
+# Authentication flow:
+#   GitHub OIDC → WIF Pool/Provider → Phase Service Account → Terraform
+#
+# Behavior:
+#   - PR:            terraform plan (comment on PR)
+#   - Push to main:  terraform apply -auto-approve
+# ==============================================================================
+
+name: "Terraform GCP"
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        description: "Path to the Terraform stack (e.g., gcp/stacks/0-bootstrap)"
+        required: true
+        type: string
+      phase:
+        description: "Phase name for display (e.g., bootstrap, org)"
+        required: true
+        type: string
+      service_account:
+        description: "GCP service account email to authenticate as"
+        required: true
+        type: string
+      terraform_version:
+        description: "Terraform version to use"
+        required: false
+        type: string
+        default: "1.10.0"
+      apply_on_push:
+        description: "Whether to auto-apply on push to main"
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      GCP_WIF_PROVIDER:
+        description: "Workload Identity Federation provider resource name"
+        required: true
+      GCP_ORG_ID:
+        description: "GCP Organization ID (numeric). Injected as TF_VAR_org_id."
+        required: false
+      GCP_BILLING_ACCOUNT:
+        description: "GCP Billing Account ID. Injected as TF_VAR_billing_account."
+        required: false
+
+permissions:
+  contents: read
+  id-token: write    # Required for OIDC → WIF
+  pull-requests: write  # Required for PR comments
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  # Sensitive Terraform variables — injected from GitHub Actions secrets
+  # Empty values are ignored; Terraform only errors if a required var is missing.
+  TF_VAR_org_id: ${{ secrets.GCP_ORG_ID }}
+  TF_VAR_billing_account: ${{ secrets.GCP_BILLING_ACCOUNT }}
+
+jobs:
+  # ============================================================================
+  # Plan — runs on every push and PR
+  # ============================================================================
+  plan:
+    name: "Plan (${{ inputs.phase }})"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Authenticate to GCP via WIF
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ inputs.service_account }}
+          token_format: "access_token"
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -no-color
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+        continue-on-error: true
+
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          PLAN: ${{ steps.plan.outputs.stdout }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const output = `### Terraform Plan — \`${{ inputs.phase }}\` (\`${{ inputs.working_directory }}\`)
+
+            #### Init: \`${{ steps.init.outcome }}\`
+            #### Validate: \`${{ steps.validate.outcome }}\`
+            #### Plan: \`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${process.env.PLAN}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+      - name: Upload Plan Artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ inputs.phase }}
+          path: ${{ inputs.working_directory }}/tfplan
+          retention-days: 1
+
+  # ============================================================================
+  # Apply — only on push to main (not PRs)
+  # ============================================================================
+  apply:
+    name: "Apply (${{ inputs.phase }})"
+    needs: plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && inputs.apply_on_push
+    runs-on: ubuntu-latest
+    environment: gcp-${{ inputs.phase }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Authenticate to GCP via WIF
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ inputs.service_account }}
+          token_format: "access_token"
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: tfplan-${{ inputs.phase }}
+          path: ${{ inputs.working_directory }}
+
+      - name: Terraform Init
+        run: terraform init -no-color
+
+      - name: Terraform Apply
+        run: terraform apply -no-color -auto-approve tfplan

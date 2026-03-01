@@ -1,0 +1,45 @@
+# ==============================================================================
+# GCP Phase 0: Bootstrap — CI/CD Pipeline
+#
+# Triggers on changes to gcp/stacks/0-bootstrap/ or shared modules.
+#
+# NOTE: The very first apply must be done locally (chicken-and-egg: WIF
+# infra doesn't exist yet). After that, this pipeline manages updates.
+#
+# Required GitHub configuration (set after first local apply):
+#   Secrets:
+#     GCP_WIF_PROVIDER    → terraform output -raw wif_provider_name
+#   Variables:
+#     GCP_BOOTSTRAP_SA    → terraform output -raw bootstrap_sa_email
+# ==============================================================================
+
+name: "GCP — 0-bootstrap"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gcp/stacks/0-bootstrap/**"
+      - "modules/naming/**"
+      - "modules/tagging/**"
+      - ".github/workflows/gcp-bootstrap.yml"
+      - ".github/workflows/_terraform.yml"
+
+  pull_request:
+    branches: [main]
+    paths:
+      - "gcp/stacks/0-bootstrap/**"
+      - "modules/naming/**"
+      - "modules/tagging/**"
+      - ".github/workflows/gcp-bootstrap.yml"
+      - ".github/workflows/_terraform.yml"
+
+jobs:
+  terraform:
+    name: "Bootstrap"
+    uses: ./.github/workflows/_terraform.yml
+    with:
+      working_directory: gcp/stacks/0-bootstrap
+      phase: bootstrap
+      service_account: ${{ vars.GCP_BOOTSTRAP_SA }}
+    secrets: inherit

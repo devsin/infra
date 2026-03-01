@@ -1,0 +1,21 @@
+# ==============================================================================
+# Phase 0: Bootstrap — Variable Values
+#
+# Copy this file to terraform.tfvars and fill in your actual values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# NOTE: terraform.tfvars is gitignored to prevent leaking sensitive values.
+# ==============================================================================
+
+# --- Required ---
+
+prefix     = ""          # e.g. "mc" — short prefix for all resource names
+org_name   = ""          # e.g. "mycompany" — used in tags
+org_domain = ""          # e.g. "mycompany.com" — used for email aliases
+github_org = ""          # e.g. "mycompany" — GitHub organization name
+github_repo = ""         # e.g. "infra" — this repository name
+
+# --- Optional ---
+
+# primary_region             = "eu-west-1"
+# state_bucket_force_destroy = false

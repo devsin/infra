@@ -1,0 +1,27 @@
+# ==============================================================================
+# Phase 1: Organization — Example Variables
+#
+# Copy this file to terraform.tfvars and fill in your values.
+# The state_bucket comes from Phase 0 output: seed_state_bucket_name
+# ==============================================================================
+
+state_bucket = "bkt-prj-b-seed-XXXX-tfstate" # Phase 0: terraform output seed_state_bucket_name
+
+brands = [
+  {
+    name   = "brand-a"
+    domain = "brand-a.com"
+    envs   = ["dev", "stage", "prod"]
+  },
+  {
+    name   = "brand-b"
+    domain = "brand-b.com"
+    envs   = ["dev", "prod"]
+  },
+]
+
+# --- Optional ---
+# default_region             = "europe-west1"
+# enable_sandbox             = false
+# folder_deletion_protection = true
+# project_deletion_policy    = "PREVENT"

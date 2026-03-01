@@ -1,0 +1,43 @@
+# ==============================================================================
+# Phase 0: Bootstrap (GCP) — Variable Values
+#
+# Copy this file to terraform.tfvars and fill in your actual values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# NOTE: terraform.tfvars is gitignored to prevent leaking sensitive values.
+#
+# In CI, org_id and billing_account are injected via TF_VAR_* env vars
+# from GitHub Actions secrets (GCP_ORG_ID, GCP_BILLING_ACCOUNT).
+# Non-sensitive values are committed in bootstrap.auto.tfvars.
+# ==============================================================================
+
+# --- Required ---
+
+org_id          = "" # e.g. "123456789012" — GCP Organization ID (numeric)
+billing_account = "" # e.g. "012345-6789AB-CDEF01" — Billing Account ID
+org_name        = "" # e.g. "mycompany" — used in labels
+org_domain      = "" # e.g. "mycompany.com"
+github_owner    = "" # e.g. "my-github-org" — GitHub org or user
+github_repo     = "" # e.g. "infra" — infra repo name
+
+# --- Optional: naming prefixes (keep consistent across all phases) ---
+
+# prefix         = "mc"     # Short prefix for resources
+# project_prefix = "prj"    # Prefix for project IDs
+# folder_prefix  = "fldr"   # Prefix for folder names
+# bucket_prefix  = "bkt"    # Prefix for GCS buckets
+
+# --- Optional: region ---
+
+# default_region = "europe-west1"
+
+# --- Optional: protection ---
+
+# bucket_force_destroy       = false
+# kms_prevent_destroy        = true
+# folder_deletion_protection = true
+# project_deletion_policy    = "PREVENT"
+
+# --- Optional: parent folder ---
+
+# parent_folder = ""  # Place under a specific folder instead of org root

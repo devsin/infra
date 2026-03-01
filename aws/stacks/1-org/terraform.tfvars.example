@@ -1,0 +1,32 @@
+# ==============================================================================
+# Phase 1: Organization — Variable Values
+#
+# Copy this file to terraform.tfvars and fill in your actual values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# NOTE: terraform.tfvars is gitignored to prevent leaking sensitive values.
+# ==============================================================================
+
+# --- Required ---
+
+prefix     = "" # e.g. "my" — short prefix for all resource names
+org_name   = "" # e.g. "mycompany" — used in tags
+org_domain = "" # e.g. "mycompany.com" — used for account email aliases
+
+brands = [
+  # {
+  #   name   = "acme"
+  #   domain = "acme.com"
+  #   envs   = ["dev", "stage", "prod"]
+  # },
+  # {
+  #   name   = "widgets"
+  #   domain = "widgets.io"
+  #   envs   = ["dev", "prod"]
+  # },
+]
+
+# --- Optional ---
+
+# primary_region = "eu-west-1"
+# enable_sandbox = false

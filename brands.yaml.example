@@ -1,0 +1,48 @@
+# =============================================================================
+# Brand Definitions — Single Source of Truth
+#
+# This file defines all brands/products managed by this infrastructure.
+# Provider-agnostic — each brand specifies which providers it uses.
+#
+# Used by:
+#   - Terraform tfvars generation (scripts/scaffold.sh)
+#   - GitOps directory scaffolding
+#   - CI/CD workflow generation
+#   - Brand-scoped provider deployments (GitHub, Railway, Supabase, etc.)
+# =============================================================================
+
+brands:
+  # Example brand — replace with your actual brands
+  #
+  # - name: acme
+  #   domain: acme.com
+  #   environments: [dev, stage, prod]
+  #
+  #   # Org-scoped clouds (phase-based, brands nested inside parent org)
+  #   clouds: [aws, gcp]
+  #
+  #   # Brand-scoped providers (each brand has its own tenant)
+  #   providers:
+  #     github_org: acme-org                  # GitHub organization name
+  #     railway_workspace: acme               # Railway workspace/team name
+  #     supabase_org_id: org-xxxxx            # Supabase organization ID
+  #
+  # - name: widgets
+  #   domain: widgets.io
+  #   environments: [dev, prod]
+  #   clouds: [aws]
+  #   providers:
+  #     github_org: widgets-dev
+  #     railway_workspace: widgets
+  #     supabase_org_id: org-yyyyy
+  #
+  # ─── Provider fields reference ───
+  #
+  #   clouds[]                       — Org-scoped: aws, gcp, digitalocean, linode
+  #   providers.github_org           — GitHub organization for this brand
+  #   providers.railway_workspace    — Railway workspace/team for this brand
+  #   providers.supabase_org_id      — Supabase organization ID for this brand
+  #   providers.digitalocean_team    — (future) DigitalOcean team
+  #   providers.linode_account       — (future) Linode account
+  #
+  # To add a new provider: add a field here and create <provider>/stacks/ at repo root.

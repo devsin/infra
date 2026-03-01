@@ -1,0 +1,44 @@
+# ==============================================================================
+# GCP Phase 1: Organization — CI/CD Pipeline
+#
+# Triggers on changes to gcp/stacks/1-org/, the project module, or shared modules.
+#
+# Required GitHub configuration (set after Phase 0 apply):
+#   Secrets:
+#     GCP_WIF_PROVIDER    → terraform -chdir=gcp/stacks/0-bootstrap output -raw wif_provider_name
+#   Variables:
+#     GCP_ORG_SA          → terraform -chdir=gcp/stacks/0-bootstrap output -raw org_sa_email
+# ==============================================================================
+
+name: "GCP — 1-org"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gcp/stacks/1-org/**"
+      - "gcp/modules/project/**"
+      - "modules/naming/**"
+      - "modules/tagging/**"
+      - ".github/workflows/gcp-org.yml"
+      - ".github/workflows/_terraform.yml"
+
+  pull_request:
+    branches: [main]
+    paths:
+      - "gcp/stacks/1-org/**"
+      - "gcp/modules/project/**"
+      - "modules/naming/**"
+      - "modules/tagging/**"
+      - ".github/workflows/gcp-org.yml"
+      - ".github/workflows/_terraform.yml"
+
+jobs:
+  terraform:
+    name: "Organization"
+    uses: ./.github/workflows/_terraform.yml
+    with:
+      working_directory: gcp/stacks/1-org
+      phase: org
+      service_account: ${{ vars.GCP_ORG_SA }}
+    secrets: inherit

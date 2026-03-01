@@ -1,0 +1,82 @@
+# ==============================================================================
+# GitHub Organization Stack — Variable Values
+#
+# Copy this file to terraform.tfvars and fill in your actual values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# Authentication:
+#   export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
+#
+# NOTE: terraform.tfvars is gitignored to prevent leaking sensitive values.
+# ==============================================================================
+
+# --- Required ---
+
+github_org = "" # e.g. "acme"
+
+# --- Repositories ---
+#
+# Key = repo name. Existing repos will be imported on first apply.
+# New repos will be created automatically.
+
+repos = {
+  "infra" = {
+    description = "Multi-cloud infrastructure — Terraform/OpenTofu"
+    visibility  = "public"
+    topics      = ["terraform", "opentofu", "infrastructure", "gcp", "aws"]
+
+    branch_protection = {
+      required_reviews      = 1
+      dismiss_stale_reviews = true
+      require_status_checks = [] # add CI job names here, e.g. ["Plan (bootstrap)"]
+      enforce_admins        = false
+    }
+  }
+
+  # --- Add more repos as needed ---
+  #
+  # "my-app" = {
+  #   description = "My application"
+  #   visibility  = "private"
+  #   auto_init   = true
+  #   topics      = ["nextjs", "typescript"]
+  #
+  #   branch_protection = {
+  #     required_reviews = 1
+  #   }
+  # }
+}
+
+# --- GitHub Actions: Secrets ---
+#
+# Values from GCP Phase 0 outputs (terraform -chdir=gcp/stacks/0-bootstrap output)
+
+actions_secrets = {
+  GCP_WIF_PROVIDER    = "" # → terraform output -raw wif_provider_name
+  GCP_ORG_ID          = "" # → GCP Organization ID (numeric)
+  GCP_BILLING_ACCOUNT = "" # → Billing Account ID (XX-XX-XX format)
+}
+
+# --- GitHub Actions: Variables ---
+#
+# Service account emails from GCP Phase 0 outputs
+
+actions_variables = {
+  GCP_BOOTSTRAP_SA = "" # → terraform output -raw bootstrap_sa_email
+  GCP_ORG_SA       = "" # → terraform output -raw org_sa_email
+  GCP_ENV_SA       = "" # → terraform output -raw env_sa_email
+  GCP_NET_SA       = "" # → terraform output -raw net_sa_email
+  GCP_PROJ_SA      = "" # → terraform output -raw proj_sa_email
+}
+
+# --- Deployment Environments ---
+#
+# These gate CI/CD applies. Add reviewers later via GitHub UI.
+
+environments = [
+  "gcp-bootstrap",
+  "gcp-org",
+  # "gcp-env",
+  # "gcp-net",
+  # "gcp-proj",
+]
