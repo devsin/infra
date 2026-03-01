@@ -2,7 +2,7 @@
 # GCP Phase 1: Organization — CI/CD Pipeline
 #
 # Triggers on changes to gcp/stacks/1-org/, the project module, or shared modules.
-##
+#
 # Required GitHub configuration (set after Phase 0 apply):
 #   Secrets:
 #     GCP_WIF_PROVIDER    → terraform -chdir=gcp/stacks/0-bootstrap output -raw wif_provider_name
