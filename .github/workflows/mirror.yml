@@ -1,0 +1,47 @@
+# ==============================================================================
+# Mirror to Public Repository
+#
+# Pushes a filtered copy of this repo to a public mirror, excluding:
+#   - .github/  (workflows contain org-specific CI config)
+#
+# All Terraform code is visible publicly; CI/CD internals remain private.
+#
+# Required setup:
+#   Secrets:
+#     MIRROR_PAT   → fine-grained PAT with Contents R/W on the public mirror repo
+#   Variables:
+#     MIRROR_REPO  → "owner/repo" of the public mirror (e.g. "devsin/infra")
+# ==============================================================================
+
+name: "Mirror (public)"
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mirror:
+    name: "Filter & push to public mirror"
+    runs-on: ubuntu-latest
+    # Skip if no mirror target is configured
+    if: vars.MIRROR_REPO != ''
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install git-filter-repo
+        run: pip install git-filter-repo --quiet
+
+      - name: Strip .github/ from history
+        run: git filter-repo --path .github --invert-paths --force
+
+      - name: Push to public mirror
+        env:
+          MIRROR_PAT: ${{ secrets.MIRROR_PAT }}
+          MIRROR_REPO: ${{ vars.MIRROR_REPO }}
+        run: |
+          git remote add public "https://x-access-token:${MIRROR_PAT}@github.com/${MIRROR_REPO}.git"
+          git push public main --force

@@ -55,6 +55,7 @@ actions_secrets = {
   GCP_WIF_PROVIDER    = "" # → terraform output -raw wif_provider_name
   GCP_ORG_ID          = "" # → GCP Organization ID (numeric)
   GCP_BILLING_ACCOUNT = "" # → Billing Account ID (XX-XX-XX format)
+  MIRROR_PAT          = "" # → fine-grained PAT with code R/W on the public mirror repo
 }
 
 # --- GitHub Actions: Variables ---
@@ -73,6 +74,9 @@ actions_variables = {
   GCP_ORG_PREFIX = "" # e.g. "mc"
   GCP_ORG_NAME   = "" # e.g. "mycompany"
   GCP_ORG_DOMAIN = "" # e.g. "mycompany.com"
+
+  # Public mirror target (owner/repo)
+  MIRROR_REPO = "" # e.g. "myuser/infra"
 }
 
 # --- Deployment Environments ---
