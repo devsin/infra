@@ -34,6 +34,7 @@ locals {
       "roles/resourcemanager.organizationAdmin",
       "roles/resourcemanager.organizationViewer",
       "roles/resourcemanager.folderCreator",
+      "roles/resourcemanager.projectCreator",
       "roles/accesscontextmanager.policyAdmin",
       "roles/essentialcontacts.admin",
       "roles/resourcemanager.tagAdmin",
@@ -83,6 +84,7 @@ locals {
       "roles/iam.serviceAccountAdmin",
       "roles/resourcemanager.projectDeleter",
       "roles/cloudkms.admin",
+      "roles/serviceusage.serviceUsageAdmin",
     ]
     "org"  = ["roles/storage.objectAdmin"]
     "env"  = ["roles/storage.objectAdmin"]
