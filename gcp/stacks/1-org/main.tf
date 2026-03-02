@@ -2,8 +2,8 @@
 # Phase 1: Organization (GCP)
 #
 # Creates the GCP org structure using SA impersonation (sa-tf-org from Phase 0):
-#   1. Folder hierarchy (Platform, Workloads, Sandbox)
-#   2. Platform projects (security, log, shared)
+#   1. Folder hierarchy (Platform*, Workloads, Sandbox*)
+#   2. Platform projects — security, log, shared
 #   3. Dynamic brand folders + brand×env projects
 #   4. Organization policies (org-policies.tf)
 #

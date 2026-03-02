@@ -9,62 +9,64 @@
 # ------------------------------------------------------------------------------
 # Platform Projects
 # ------------------------------------------------------------------------------
+# TODO: Uncomment when needed at scale (e.g. centralised logging, shared DNS,
+#       security tooling). Skipped for now to avoid billing quota limits.
 
-module "project_security" {
-  source = "../../modules/project"
+# module "project_security" {
+#   source = "../../modules/project"
+#
+#   name            = "${local.project_prefix}-p-security"
+#   folder_id       = google_folder.platform.folder_id
+#   billing_account = local.billing_account
+#   deletion_policy = var.project_deletion_policy
+#   activate_apis   = var.platform_apis
+#
+#   labels = {
+#     environment = "platform"
+#     purpose     = "security"
+#     managed-by  = "terraform"
+#   }
+# }
 
-  name            = "${local.project_prefix}-p-security"
-  folder_id       = google_folder.platform.folder_id
-  billing_account = local.billing_account
-  deletion_policy = var.project_deletion_policy
-  activate_apis   = var.platform_apis
+# module "project_log" {
+#   source = "../../modules/project"
+#
+#   name            = "${local.project_prefix}-p-log"
+#   folder_id       = google_folder.platform.folder_id
+#   billing_account = local.billing_account
+#   deletion_policy = var.project_deletion_policy
+#
+#   activate_apis = concat(var.platform_apis, [
+#     "bigquery.googleapis.com",
+#   ])
+#
+#   labels = {
+#     environment = "platform"
+#     purpose     = "logging"
+#     managed-by  = "terraform"
+#   }
+# }
 
-  labels = {
-    environment = "platform"
-    purpose     = "security"
-    managed-by  = "terraform"
-  }
-}
-
-module "project_log" {
-  source = "../../modules/project"
-
-  name            = "${local.project_prefix}-p-log"
-  folder_id       = google_folder.platform.folder_id
-  billing_account = local.billing_account
-  deletion_policy = var.project_deletion_policy
-
-  activate_apis = concat(var.platform_apis, [
-    "bigquery.googleapis.com",
-  ])
-
-  labels = {
-    environment = "platform"
-    purpose     = "logging"
-    managed-by  = "terraform"
-  }
-}
-
-module "project_shared" {
-  source = "../../modules/project"
-
-  name            = "${local.project_prefix}-p-shared"
-  folder_id       = google_folder.platform.folder_id
-  billing_account = local.billing_account
-  deletion_policy = var.project_deletion_policy
-
-  activate_apis = concat(var.platform_apis, [
-    "dns.googleapis.com",
-    "certificatemanager.googleapis.com",
-    "secretmanager.googleapis.com",
-  ])
-
-  labels = {
-    environment = "platform"
-    purpose     = "shared-services"
-    managed-by  = "terraform"
-  }
-}
+# module "project_shared" {
+#   source = "../../modules/project"
+#
+#   name            = "${local.project_prefix}-p-shared"
+#   folder_id       = google_folder.platform.folder_id
+#   billing_account = local.billing_account
+#   deletion_policy = var.project_deletion_policy
+#
+#   activate_apis = concat(var.platform_apis, [
+#     "dns.googleapis.com",
+#     "certificatemanager.googleapis.com",
+#     "secretmanager.googleapis.com",
+#   ])
+#
+#   labels = {
+#     environment = "platform"
+#     purpose     = "shared-services"
+#     managed-by  = "terraform"
+#   }
+# }
 
 # ------------------------------------------------------------------------------
 # Sandbox Project (optional)

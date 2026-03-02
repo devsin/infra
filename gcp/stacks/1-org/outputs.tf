@@ -38,38 +38,36 @@ output "folder_ids" {
   )
 }
 
-# --- Platform Project IDs ---
+# --- Platform Project IDs (commented out) ---
 
-output "security_project_id" {
-  description = "Security platform project ID"
-  value       = module.project_security.project_id
-}
+# output "security_project_id" {
+#   description = "Security platform project ID"
+#   value       = module.project_security.project_id
+# }
 
-output "log_project_id" {
-  description = "Logging platform project ID"
-  value       = module.project_log.project_id
-}
+# output "log_project_id" {
+#   description = "Logging platform project ID"
+#   value       = module.project_log.project_id
+# }
 
-output "shared_project_id" {
-  description = "Shared services platform project ID"
-  value       = module.project_shared.project_id
-}
+# output "shared_project_id" {
+#   description = "Shared services platform project ID"
+#   value       = module.project_shared.project_id
+# }
 
-output "sandbox_project_id" {
-  description = "Sandbox project ID (empty if disabled)"
-  value       = var.enable_sandbox ? module.project_sandbox[0].project_id : ""
-}
+# output "sandbox_project_id" {
+#   description = "Sandbox project ID (empty if disabled)"
+#   value       = var.enable_sandbox ? module.project_sandbox[0].project_id : ""
+# }
 
-# --- Platform Project IDs (convenience map) ---
-
-output "platform_project_ids" {
-  description = "Map of platform project purpose → project ID"
-  value = {
-    security = module.project_security.project_id
-    log      = module.project_log.project_id
-    shared   = module.project_shared.project_id
-  }
-}
+# output "platform_project_ids" {
+#   description = "Map of platform project purpose → project ID"
+#   value = {
+#     security = module.project_security.project_id
+#     log      = module.project_log.project_id
+#     shared   = module.project_shared.project_id
+#   }
+# }
 
 # --- Brand Project IDs ---
 
@@ -90,8 +88,8 @@ output "common_config" {
     project_prefix      = local.project_prefix
     platform_folder_id  = google_folder.platform.folder_id
     workloads_folder_id = google_folder.workloads.folder_id
-    security_project_id = module.project_security.project_id
-    log_project_id      = module.project_log.project_id
-    shared_project_id   = module.project_shared.project_id
+    # security_project_id = module.project_security.project_id
+    # log_project_id      = module.project_log.project_id
+    # shared_project_id   = module.project_shared.project_id
   }
 }

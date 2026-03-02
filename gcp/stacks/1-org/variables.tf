@@ -61,17 +61,18 @@ variable "project_deletion_policy" {
   }
 }
 
-variable "platform_apis" {
-  description = "APIs to enable on platform projects"
-  type        = list(string)
-  default = [
-    "logging.googleapis.com",
-    "monitoring.googleapis.com",
-    "cloudresourcemanager.googleapis.com",
-    "serviceusage.googleapis.com",
-    "cloudasset.googleapis.com",
-  ]
-}
+# TODO: Uncomment when platform projects are needed.
+# variable "platform_apis" {
+#   description = "APIs to enable on platform projects"
+#   type        = list(string)
+#   default = [
+#     "logging.googleapis.com",
+#     "monitoring.googleapis.com",
+#     "cloudresourcemanager.googleapis.com",
+#     "serviceusage.googleapis.com",
+#     "cloudasset.googleapis.com",
+#   ]
+# }
 
 variable "workload_apis" {
   description = "APIs to enable on workload (brand) projects"
@@ -86,5 +87,8 @@ variable "workload_apis" {
     "sqladmin.googleapis.com",
     "redis.googleapis.com",
     "run.googleapis.com",
+    "iap.googleapis.com",
+    "secretmanager.googleapis.com",
+    "people.googleapis.com",
   ]
 }
