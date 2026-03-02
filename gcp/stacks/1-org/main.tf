@@ -73,8 +73,6 @@ resource "google_folder" "workloads" {
 }
 
 resource "google_folder" "sandbox" {
-  count = var.enable_sandbox ? 1 : 0
-
   display_name        = "${local.folder_prefix}-sandbox"
   parent              = local.parent
   deletion_protection = var.folder_deletion_protection
