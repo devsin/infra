@@ -38,6 +38,10 @@ on:
         required: false
         type: boolean
         default: true
+      backend_prefix:
+        description: "GCS backend state prefix (e.g., terraform/gcp/bootstrap)"
+        required: true
+        type: string
     secrets:
       GCP_WIF_PROVIDER:
         description: "Workload Identity Federation provider resource name"
@@ -102,7 +106,10 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -no-color
+        run: |
+          terraform init -no-color \
+            -backend-config="bucket=${{ vars.GCP_STATE_BUCKET }}" \
+            -backend-config="prefix=${{ inputs.backend_prefix }}"
 
       - name: Terraform Validate
         id: validate
@@ -192,7 +199,10 @@ jobs:
           path: ${{ inputs.working_directory }}
 
       - name: Terraform Init
-        run: terraform init -no-color
+        run: |
+          terraform init -no-color \
+            -backend-config="bucket=${{ vars.GCP_STATE_BUCKET }}" \
+            -backend-config="prefix=${{ inputs.backend_prefix }}"
 
       - name: Terraform Apply
         run: |

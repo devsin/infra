@@ -42,4 +42,5 @@ jobs:
       working_directory: gcp/stacks/1-org
       phase: org
       service_account: ${{ vars.GCP_ORG_SA }}
+      backend_prefix: terraform/gcp/org
     secrets: inherit

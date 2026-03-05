@@ -43,4 +43,5 @@ jobs:
       working_directory: gcp/stacks/0-bootstrap
       phase: bootstrap
       service_account: ${{ vars.GCP_BOOTSTRAP_SA }}
+      backend_prefix: terraform/gcp/bootstrap
     secrets: inherit
