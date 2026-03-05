@@ -1,0 +1,32 @@
+# ==============================================================================
+# Cloudflare Org Stack — example
+#
+# Copy to envs/<org>.tfvars and fill in real values. Keep gitignored.
+#
+# Usage:
+#   export TF_VAR_cloudflare_api_token="<token>"
+#   tofu init \
+#     -backend-config="bucket=<state-bucket>" \
+#     -backend-config="prefix=terraform/cloudflare/org/<org>"
+#   tofu plan  -var-file=envs/<org>.tfvars
+#   tofu apply -var-file=envs/<org>.tfvars
+#
+# After first apply, run:
+#   tofu output name_servers
+# and update the registrar NS records for each domain.
+# ==============================================================================
+
+cloudflare_api_token = "<cloudflare-api-token>"
+account_id           = "<cloudflare-account-id>"
+
+zones = {
+  # Key = stable label used in brand stack remote state references.
+  # Example: "myapp" → zone_ids["myapp"] in brand stacks.
+  myapp = {
+    zone_name = "myapp.com"
+    type      = "full"
+  }
+  # storefront = {
+  #   zone_name = "storefront.io"
+  # }
+}

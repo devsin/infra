@@ -2,63 +2,57 @@
 
 ## Overview
 
-Each brand has its **own Railway workspace**. The parent company is an admin/owner in each workspace, but they are separate tenants — not nested under one parent workspace.
+[Railway](https://railway.app) is a PaaS used for deploying application services, databases, and scheduled jobs. Each brand gets **one Railway project** containing all services and environments.
 
-[Railway](https://railway.app) is a PaaS used for deploying application services, databases, and scheduled jobs. This Terraform stack manages:
-- Railway projects (one per app/service)
-- Services within projects
-- Environment variables and secrets
-- Custom domains
-- Volume mounts
-- TCP proxies (if needed)
+This Terraform stack manages:
+- Railway project (one per brand)
+- Environments (dev, prod — first is default)
+- Services within the project (API, web, database, workers)
+- Environment variables per service per environment
+- Custom domains per service per environment
+- Volume mounts (persistent storage for databases)
 
 ## Architecture
 
 ```
-<parent-org> (admin)
+Railway Workspace (per-brand token)
 │
-├── Railway Workspace: <brand-a>
-│   ├── Project: <brand-a>-web     (production, staging envs)
-│   ├── Project: <brand-a>-api     (production, staging envs)
-│   ├── Project: <brand-a>-workers (production, staging envs)
-│   └── managed via envs/<brand-a>.tfvars
-│
-├── Railway Workspace: <brand-b>
-│   ├── Project: <brand-b>-app     (production, staging envs)
-│   ├── Project: <brand-b>-ingest  (production, staging envs)
-│   └── managed via envs/<brand-b>.tfvars
-│
-└── (<parent-org>'s own workspace — if any)
+└── Project: <brand>
+    ├── Environment: dev  (default)
+    │   ├── Service: <brand>-api     → api-dev.<domain>
+    │   ├── Service: <brand>-web     → dev.<domain>
+    │   └── Service: <brand>-db      → PostgreSQL (volume-backed)
+    │
+    └── Environment: prod
+        ├── Service: <brand>-api     → api.<domain>
+        ├── Service: <brand>-web     → <domain>
+        └── Service: <brand>-db      → PostgreSQL (volume-backed)
 ```
 
-> **Key point:** Railway workspaces are the brand-level isolation boundary.
-> Each workspace has its own billing, team, and token scope.
+> **Key design:** One project per brand, multiple services inside.
+> Environments are first-class Railway objects — the first environment
+> in the list becomes the project default, additional ones are created
+> via `railway_environment`.
 
 ## Directory Structure
 
 ```
 railway/
 ├── stacks/
-│   └── brand/                   # Per-brand Railway workspace management
-│       ├── main.tf              #   Projects, services, environments
-│       ├── projects.tf          #   Project definitions
-│       ├── variables.tf
+│   └── brand/                   # Per-brand Railway project
+│       ├── main.tf              #   Project, environments, services, vars, domains
+│       ├── variables.tf         #   Services map with vars/domains/volumes
+│       ├── outputs.tf           #   Project ID, service IDs
 │       ├── providers.tf
 │       ├── backend.tf
-│       ├── outputs.tf
 │       ├── versions.tf
-│       └── envs/                #   One tfvars per brand
-│           ├── <brand-a>.tfvars
-│           └── <brand-b>.tfvars
+│       └── envs/
+│           └── <brand>.tfvars   #   One file per brand (all envs inside)
 │
-└── modules/
-    ├── project/                 # Reusable Railway project module
-    └── service/                 # Reusable Railway service module
+└── modules/                     # (empty — all resources in main.tf)
 ```
 
 ## Terraform Provider
-
-Railway has a community Terraform provider. Evaluate the latest options:
 
 ```hcl
 # versions.tf
@@ -68,157 +62,243 @@ terraform {
   required_providers {
     railway = {
       source  = "terraform-community-providers/railway"
-      version = "~> 0.4"
+      version = "~> 0.6"
     }
   }
 }
 ```
 
-> **Note:** The Railway Terraform provider is community-maintained. Check
-> [registry.terraform.io](https://registry.terraform.io/providers/terraform-community-providers/railway/latest)
-> for the latest version and supported resources. If the provider is too limited,
-> consider using Railway's GraphQL API via `null_resource` + `local-exec`, or
-> managing Railway via their CLI in CI/CD instead.
+> **Note:** This is a community-maintained provider. Check the
+> [Terraform Registry](https://registry.terraform.io/providers/terraform-community-providers/railway/latest)
+> for the latest version and supported resources.
 
 ## Authentication
 
-Railway uses **API tokens** scoped to a workspace (team).
+Railway uses an **API token** scoped to a workspace (team).
 
 ```hcl
 # providers.tf
 provider "railway" {
-  token = var.railway_token  # or use RAILWAY_TOKEN env var
+  token = var.token  # or export TF_VAR_token="..."
 }
 ```
 
-> **Security:** Never commit tokens. Use environment variables or a secrets manager.
+> **Security:** Never commit tokens. Use `export TF_VAR_token="..."`.
 > Each brand workspace has its own API token.
 
 ## Key Variables
 
+### Service Definition
+
+Each service is defined as a map entry with per-environment variables and custom domains:
+
 ```hcl
-# variables.tf
-variable "brand_name" {
-  description = "Brand name (must match brands.yaml)"
-  type        = string
-}
-
-variable "railway_token" {
-  description = "Railway API token for the brand's workspace"
-  type        = string
-  sensitive   = true
-}
-
-variable "projects" {
-  description = "Map of Railway projects to create"
+variable "services" {
   type = map(object({
-    description  = optional(string, "")
-    environments = optional(list(string), ["production", "staging"])
-    services = optional(map(object({
-      source_repo  = optional(string, null)   # GitHub repo (auto-deploy)
-      source_image = optional(string, null)    # Docker image
-      num_replicas = optional(number, 1)
-      start_command = optional(string, null)
-      healthcheck_path = optional(string, null)
-      variables = optional(map(string), {})
-      domains   = optional(list(string), [])   # Custom domains
-    })), {})
+    source_repo    = optional(string, null)    # GitHub repo (e.g., "myorg/myapp")
+    source_branch  = optional(string, null)    # Branch override
+    source_image   = optional(string, null)    # Docker image (mutually exclusive with repo)
+    root_directory = optional(string, null)     # Monorepo subdirectory
+    config_path    = optional(string, null)     # railway.json/toml path
+    cron_schedule  = optional(string, null)     # Cron expression if worker
+
+    volume = optional(object({                 # Persistent volume (for databases)
+      mount_path = string                      #   e.g., "/var/lib/postgresql/data"
+      size_mb    = optional(number, 10240)     #   Default 10 GB
+    }), null)
+
+    # Variables: map of environment → map of key=value
+    variables = optional(map(map(string)), {})
+    #   e.g., { dev = { NODE_ENV = "development" }, prod = { NODE_ENV = "production" } }
+
+    # Custom domains: map of environment → list of domains
+    custom_domains = optional(map(list(string)), {})
+    #   e.g., { dev = ["api-dev.mybrand.com"], prod = ["api.mybrand.com"] }
   }))
-  default = {}
 }
 ```
 
 ### Example Brand tfvars
 
 ```hcl
-# envs/<brand>.tfvars
-brand_name = "<brand>"
+# railway/stacks/brand/envs/<brand>.tfvars
+brand_name   = "<brand>"
+environments = ["dev", "prod"]    # First is default
+region       = "europe-west4"     # or us-west1, us-east4, etc.
 
-projects = {
-  "<brand>-web" = {
-    description  = "Web application"
-    environments = ["production", "staging"]
-    services = {
-      "web" = {
-        source_repo    = "<brand>-org/<brand>-web"
-        num_replicas   = 1
-        healthcheck_path = "/api/health"
-        domains = ["<brand>.com", "www.<brand>.com"]
-        variables = {
-          NODE_ENV = "production"
-        }
+services = {
+  "<brand>-api" = {
+    source_repo = "<github-org>/<brand>-api"
+
+    variables = {
+      dev = {
+        PORT              = "8080"
+        ENVIRONMENT       = "development"
+        DATABASE_URL      = "${{<brand>-db.DATABASE_URL}}"
+        CORS_ORIGIN       = "https://dev.<brand-domain>"
+        PUBLIC_API_URL    = "https://api-dev.<brand-domain>"
+      }
+      prod = {
+        PORT              = "8080"
+        ENVIRONMENT       = "production"
+        DATABASE_URL      = "${{<brand>-db.DATABASE_URL}}"
+        CORS_ORIGIN       = "https://<brand-domain>"
+        PUBLIC_API_URL    = "https://api.<brand-domain>"
       }
     }
+
+    custom_domains = {
+      dev  = ["api-dev.<brand-domain>"]
+      prod = ["api.<brand-domain>"]
+    }
   }
-  "<brand>-api" = {
-    description  = "API backend"
-    environments = ["production", "staging"]
-    services = {
-      "api" = {
-        source_repo    = "<brand>-org/<brand>-api"
-        healthcheck_path = "/health"
-        domains = ["api.<brand>.com"]
+
+  "<brand>-web" = {
+    source_repo = "<github-org>/<brand>-web"
+
+    variables = {
+      dev = {
+        PUBLIC_API_URL = "https://api-dev.<brand-domain>"
       }
-      "postgres" = {
-        # Railway managed Postgres plugin
+      prod = {
+        PUBLIC_API_URL = "https://api.<brand-domain>"
       }
-      "redis" = {
-        # Railway managed Redis plugin
+    }
+
+    custom_domains = {
+      dev  = ["dev.<brand-domain>"]
+      prod = ["<brand-domain>"]
+    }
+  }
+
+  "<brand>-db" = {
+    source_image = "ghcr.io/railwayapp-templates/postgres-ssl:17"
+
+    volume = {
+      mount_path = "/var/lib/postgresql/data"
+      size_mb    = 10240
+    }
+
+    variables = {
+      dev = {
+        POSTGRES_USER     = "<brand>"
+        POSTGRES_DB       = "<brand>"
+        POSTGRES_PASSWORD = "<generated>"
+        PGDATA            = "/var/lib/postgresql/data/pgdata"
+      }
+      prod = {
+        POSTGRES_USER     = "<brand>"
+        POSTGRES_DB       = "<brand>"
+        POSTGRES_PASSWORD = "<generated>"
+        PGDATA            = "/var/lib/postgresql/data/pgdata"
       }
     }
   }
 }
 ```
 
+### Variable Interpolation
+
+Railway supports inter-service variable references via `${{service.VAR}}` syntax.
+This is especially useful for database connection strings:
+
+```hcl
+DATABASE_URL = "${{<brand>-db.DATABASE_URL}}"
+```
+
+> The `DATABASE_URL` is automatically generated by Railway's PostgreSQL
+> template and exposed to other services via this reference syntax.
+
+## Subdomain Strategy
+
+Dev subdomains must be single-level to work with Cloudflare Free plan Universal SSL:
+
+| Service | Dev | Prod |
+|---------|-----|------|
+| API | `api-dev.<domain>` | `api.<domain>` |
+| Web | `dev.<domain>` | `<domain>` |
+| CDN | `cdn-dev.<domain>` | `cdn.<domain>` |
+
+> **Why not `dev.api.<domain>`?** Cloudflare Free plan Universal SSL only covers
+> `*.<domain>`, not `*.*.<domain>`. Multi-level subdomains cause
+> `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`. See [Cloudflare docs](../cloudflare/README.md).
+
 ## Railway Concepts → Terraform Mapping
 
 | Railway Concept | Terraform Resource | Notes |
 |----------------|-------------------|-------|
 | Workspace (Team) | N/A — pre-created | Token scopes to workspace |
-| Project | `railway_project` | Groups related services |
-| Environment | `railway_project` environments | production, staging |
-| Service | `railway_service` | Web, API, worker, database |
-| Variables | `railway_variable` | Per-service, per-environment |
-| Custom Domain | `railway_custom_domain` | Attach to a service |
-| Volume | `railway_volume` | Persistent storage |
-| TCP Proxy | `railway_tcp_proxy` | Expose non-HTTP services |
+| Project | `railway_project` | One per brand |
+| Environment | `railway_environment` | First in list is default |
+| Service | `railway_service` | API, web, DB, workers |
+| Variables | `railway_variable` | Flattened: service × env × var |
+| Custom Domain | `railway_custom_domain` | Flattened: service × env × domain |
+| Volume | `railway_volume` | Persistent storage (e.g., PostgreSQL data) |
+
+## How Resources Are Flattened
+
+The `main.tf` flattens nested maps into flat `for_each` maps for Terraform:
+
+```
+services.variables:  { dev = { PORT = "8080" } }
+  → flattened key:   "api:dev:PORT" → railway_variable
+  
+services.custom_domains: { dev = ["api-dev.mybrand.com"] }
+  → flattened key:   "api:dev:0" → railway_custom_domain
+```
+
+This pattern avoids nested `dynamic` blocks and makes the state addressable.
 
 ## State Management
 
 ```bash
-# Init with brand-specific state key
 cd railway/stacks/brand
-terraform init -backend-config="prefix=providers/railway/brand/<brand>"
-terraform plan -var-file=envs/<brand>.tfvars
+tofu init -reconfigure \
+  -backend-config="bucket=<gcs-tfstate-bucket>" \
+  -backend-config="prefix=terraform/railway/<brand>"
+
+tofu plan  -var-file=envs/<brand>.tfvars
+tofu apply -var-file=envs/<brand>.tfvars
 ```
+
+| Stack | State Prefix |
+|-------|-------------|
+| Brand | `terraform/railway/<brand>` |
+
+> **Note:** All environments for a brand share one state file.
+> The per-env variable/domain separation is handled via the flattened maps.
 
 ## Deployment
 
 ```bash
-# Deploy Railway config for a brand
 cd railway/stacks/brand
-terraform init -backend-config="prefix=providers/railway/brand/<brand>"
-terraform plan -var-file=envs/<brand>.tfvars
-terraform apply -var-file=envs/<brand>.tfvars
+export TF_VAR_token="<railway-api-token>"
 
-# Deploy another brand
-terraform init -reconfigure -backend-config="prefix=providers/railway/brand/<brand-b>"
-terraform plan -var-file=envs/<brand-b>.tfvars
-terraform apply -var-file=envs/<brand-b>.tfvars
+tofu init -reconfigure \
+  -backend-config="bucket=<gcs-tfstate-bucket>" \
+  -backend-config="prefix=terraform/railway/<brand>"
+
+tofu plan  -var-file=envs/<brand>.tfvars
+tofu apply -var-file=envs/<brand>.tfvars
 ```
+
+### Importing Existing Resources
+
+If Railway resources already exist (created via dashboard or CLI), import them before applying. See [IMPORT.md](../../../railway/stacks/brand/IMPORT.md) for detailed import commands.
 
 ## What Gets Managed
 
-| Resource | Managed by Terraform? | Notes |
-|----------|----------------------|-------|
-| Workspaces (Teams) | ❌ No | Created manually, token scoped to workspace |
-| Projects | ✅ Yes | Created and configured |
-| Services | ✅ Yes | Linked to GitHub repos or Docker images |
-| Environment variables | ✅ Yes | Per-service, per-environment |
-| Custom domains | ✅ Yes | Attached to services |
-| Volumes | ✅ Yes | Persistent storage for databases |
-| Deployments | ❌ No | Triggered by git push (auto-deploy) or Railway CLI |
-| Billing | ❌ No | Managed in Railway dashboard |
+| Resource | Managed? | Notes |
+|----------|----------|-------|
+| Workspaces (Teams) | No | Created manually; token scoped to workspace |
+| Projects | Yes | One per brand |
+| Environments | Yes | First is default; others created via `railway_environment` |
+| Services | Yes | Linked to GitHub repos or Docker images |
+| Environment variables | Yes | Per-service, per-environment |
+| Custom domains | Yes | Per-service, per-environment |
+| Volumes | Yes | Persistent storage for databases |
+| Deployments | No | Triggered by git push (auto-deploy) or Railway CLI |
+| Billing | No | Managed in Railway dashboard |
 
 ## Considerations
 
@@ -228,6 +308,7 @@ Railway is ideal for:
 - Rapid prototyping and dev/staging environments
 - Simple web apps and APIs that don't need K8s complexity
 - Brands that start small before graduating to EKS/GKE
+- Go/Node.js/Python services with auto-deploy from GitHub
 
 Railway is NOT ideal for:
 - High-compliance workloads (use AWS/GCP)

@@ -1,0 +1,169 @@
+# ---------------------------------------------------------------------------
+# cloudflare/stacks/brand — terraform.tfvars.example
+#
+# Two envs per brand: copy to envs/<brand>-dev.tfvars and envs/<brand>-prod.tfvars
+#
+# Run for dev:
+#   tofu init -reconfigure \
+#     -backend-config="bucket=<gcs-tfstate-bucket>" \
+#     -backend-config="prefix=terraform/cloudflare/<brand>-dev"
+#   tofu plan  -var-file=envs/<brand>-dev.tfvars
+#   tofu apply -var-file=envs/<brand>-dev.tfvars
+#
+# Run for prod:
+#   tofu init -reconfigure \
+#     -backend-config="bucket=<gcs-tfstate-bucket>" \
+#     -backend-config="prefix=terraform/cloudflare/<brand>-prod"
+#   tofu plan  -var-file=envs/<brand>-prod.tfvars
+#   tofu apply -var-file=envs/<brand>-prod.tfvars
+#
+# API token: export TF_VAR_cloudflare_api_token="<your-token>"
+#
+# ZONE STRATEGY
+# -------------
+# One Cloudflare zone is shared across envs for each brand domain.
+# - prod tfvars: create_zone = true  (creates the zone + manages zone settings)
+# - dev  tfvars: create_zone = false (looks up the existing zone, just adds dev DNS records)
+# Settings (WAF, TLS, etc.) should only be in the prod tfvars to avoid conflicts.
+#
+# FREE PLAN SSL LIMITATION
+# ------------------------
+# Cloudflare Free plan Universal SSL only covers *.domain.tld (single-level).
+# Multi-level subdomains (e.g. dev.api.domain.tld) cause ERR_SSL_VERSION_OR_CIPHER_MISMATCH.
+# Use single-level dev subdomains: api-dev.domain.tld, cdn-dev.domain.tld
+#
+# FREE PLAN WAF LIMITATION
+# ------------------------
+# WAF managed rulesets are not available on Free plan. Set waf_managed_ruleset_enabled = false.
+# Total TLS (ACM) also requires a paid plan. Set total_tls_enabled = false on Free plan.
+#
+# PORKBUN NAMESERVERS
+# -------------------
+# After first `tofu apply` with prod tfvars (create_zone = true), copy the
+# zone_name_servers output → go to Porkbun → Domain Management → <domain>
+# → Edit Nameservers → paste the two Cloudflare NS values.
+# ---------------------------------------------------------------------------
+
+account_id  = "<cloudflare-account-id>"
+org_name    = "<org-slug>"        # e.g: nd
+suborg_name = ""                  # e.g: core — leave empty to omit from bucket names
+brand_name  = "<brand-slug>"      # e.g: myapp
+environment = "dev"               # dev | prod — appended to all R2 bucket names
+
+# ---------------------------------------------------------------------------
+# DNS zones
+#
+# PROD tfvars — creates and owns the zone + all zone settings
+# ---------------------------------------------------------------------------
+
+zones = {
+  primary = {
+    zone_name   = "<brand-domain.id>"
+    create_zone = true # PROD: true  |  DEV: false (zone already exists)
+
+    # TLS / Security / Performance settings should ONLY appear in prod tfvars.
+    # Having them in both would cause state conflicts on the same zone resource.
+    ssl_mode                    = "full"
+    min_tls_version             = "1.2"
+    always_use_https            = true
+    total_tls_enabled           = false   # Requires paid plan (ACM). Set true on Pro+.
+    security_level              = "medium"
+    waf_managed_ruleset_enabled = false   # Requires Pro+ plan. Set true on Pro+.
+    brotli                      = true
+    http3                       = true
+
+    dns_records = {
+      # PROD: apex + www point to production origins
+      apex = {
+        name    = "@"
+        type    = "A"
+        content = "<prod-origin-ip>"
+        proxied = true
+      }
+      www = {
+        name    = "www"
+        type    = "CNAME"
+        content = "<brand-domain.id>"
+        proxied = true
+      }
+      api = {
+        name    = "api"
+        type    = "CNAME"
+        content = "<prod-api-origin>"
+        proxied = true
+      }
+      # DEV: single-level subdomain records (use in dev tfvars only)
+      # api_dev = {
+      #   name    = "api-dev"
+      #   type    = "CNAME"
+      #   content = "<dev-api-origin>"
+      #   proxied = true
+      # }
+      # web_dev = {
+      #   name    = "dev"
+      #   type    = "CNAME"
+      #   content = "<dev-web-origin>"
+      #   proxied = true
+      # }
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# R2 buckets
+#
+# Bucket names: <org>[-<suborg>]-<brand>-<env>-<key>
+# Examples:
+#   dev:  acme-myapp-dev-assets,  acme-myapp-dev-uploads
+#   prod: acme-myapp-prod-assets, acme-myapp-prod-uploads
+# ---------------------------------------------------------------------------
+
+r2_buckets = {
+  # Public assets bucket — avatars, images, CDN files
+  assets = {
+    location      = "enam" # enam | wnam | eeur | weur | apac | oc
+    storage_class = "Standard"
+
+    cors_rules = [
+      {
+        allowed = {
+          methods = ["GET", "HEAD"]
+          origins = ["https://<brand-domain.id>", "https://www.<brand-domain.id>"]
+          headers = ["Content-Type", "Range"]
+        }
+        expose_headers  = ["Content-Length", "Content-Range", "ETag"]
+        max_age_seconds = 86400
+      }
+    ]
+
+    # Custom domain — use env-specific single-level subdomain
+    # prod: assets.<brand-domain>  |  dev: assets-dev.<brand-domain>
+    custom_domain = {
+      domain     = "assets.<brand-domain.id>"
+      zone_label = "primary"
+      enabled    = true
+      min_tls    = "TLSv1.2"
+    }
+  }
+
+  # Private uploads — no public CORS or custom domain
+  uploads = {
+    location      = "enam"
+    storage_class = "Standard"
+
+    lifecycle_rules = [
+      {
+        id      = "abort-incomplete-uploads"
+        enabled = true
+        prefix  = ""
+        abort_incomplete_multipart_upload_after_days = 7
+      },
+      {
+        id                = "expire-tmp"
+        enabled           = true
+        prefix            = "tmp/"
+        delete_after_days = 30
+      }
+    ]
+  }
+}

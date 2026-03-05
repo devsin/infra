@@ -2,67 +2,61 @@
 
 ## Overview
 
-Each brand in the organization has its **own GitHub organization**. The parent company is an **owner/admin** in every brand org, but each org is a separate tenant.
+GitHub manages **source control, CI/CD, and repository configuration** for the organization. The current implementation has:
 
-This Terraform stack manages:
-- GitHub organization settings
-- Repository creation and configuration
-- Team structure and membership
-- Branch protection rules
-- Repository secrets and variables (for Actions)
-- Webhooks and integrations
+- **Org stack** — manages repositories, Actions secrets/variables, and deployment environments for the parent org.
+- **Brand stack** — (scaffold only) planned for per-brand GitHub org management.
 
 ## Architecture
 
 ```
-<parent-org> (admin)
+github/stacks/org                (parent org)
 │
-├── github.com/<brand-a>-org     ← Brand A GitHub org
-│   ├── repos, teams, settings
-│   └── managed via envs/<brand-a>.tfvars
+├── Repositories (via module)
+│   └── infra, <brand>-api, <brand>-web, ...
 │
-├── github.com/<brand-b>-org     ← Brand B GitHub org
-│   ├── repos, teams, settings
-│   └── managed via envs/<brand-b>.tfvars
+├── Actions Secrets (org-level)
+│   └── GCP_WIF_PROVIDER, GCP_ORG_ID, GCP_BILLING_ACCOUNT, MIRROR_PAT
 │
-└── github.com/<parent-org>      ← Admin org (optional Terraform)
-    └── managed via stacks/org/
+├── Actions Variables (org-level)
+│   └── GCP_BOOTSTRAP_SA, GCP_ORG_SA, GCP_STATE_BUCKET, GCP_BRANDS, ...
+│
+└── Deployment Environments
+    └── gcp-bootstrap, gcp-org, ...
+
+github/stacks/brand              (per-brand — scaffold only)
+│
+└── envs/<brand>.tfvars          (future)
 ```
 
-> **Key point:** Unlike AWS/GCP where one org contains all brands, each brand's
-> GitHub org is completely independent. The parent org is an admin *member*
-> in each, not the *container*.
+> **Current state:** The org stack is fully implemented and active. The brand
+> stack directory exists but has no Terraform files yet — it's reserved for
+> managing per-brand GitHub organizations in the future.
 
 ## Directory Structure
 
 ```
 github/
 ├── stacks/
-│   ├── org/                     # Admin org settings (parent org)
-│   │   ├── main.tf              #   Org-level settings, admin team
-│   │   ├── variables.tf
+│   ├── org/                             # Parent org settings + CI/CD config
+│   │   ├── main.tf                      #   Repos via module, org data source
+│   │   ├── actions.tf                   #   Secrets, variables, environments
+│   │   ├── variables.tf                 #   Repos, secrets, variables, envs
 │   │   ├── providers.tf
 │   │   ├── backend.tf
 │   │   ├── outputs.tf
-│   │   ├── terraform.tfvars
-│   │   └── versions.tf
+│   │   ├── versions.tf
+│   │   ├── terraform.tfvars             #   (gitignored — real values)
+│   │   └── terraform.tfvars.example     #   Sanitized example
 │   │
-│   └── brand/                   # Per-brand GitHub org management
-│       ├── main.tf              #   Repos, teams, branch protection
-│       ├── repos.tf             #   Repository definitions
-│       ├── teams.tf             #   Team structure
-│       ├── variables.tf
-│       ├── providers.tf
-│       ├── backend.tf
-│       ├── outputs.tf
-│       ├── versions.tf
-│       └── envs/                #   One tfvars per brand
-│           ├── <brand-a>.tfvars
-│           └── <brand-b>.tfvars
+│   └── brand/                           # Per-brand GitHub org (future)
+│       └── envs/
 │
 └── modules/
-    ├── repository/              # Reusable repo module
-    └── team/                    # Reusable team module
+    └── repository/                      # Reusable repo module
+        ├── main.tf                      #   github_repository + branch protection
+        ├── variables.tf
+        └── outputs.tf
 ```
 
 ## Terraform Provider
@@ -83,223 +77,201 @@ terraform {
 
 ## Authentication
 
-The GitHub provider authenticates using a **GitHub App** or **Personal Access Token (PAT)** with admin scope on the target organization.
-
-### Option A: GitHub App (Recommended)
-
 ```hcl
 # providers.tf
 provider "github" {
   owner = var.github_org
-
-  app_auth {
-    id              = var.github_app_id
-    installation_id = var.github_app_installation_id
-    pem_file        = var.github_app_pem_file  # or use GITHUB_APP_PEM_FILE env var
-  }
+  token = var.github_token  # or export GITHUB_TOKEN="ghp_..."
 }
 ```
 
-### Option B: Personal Access Token
-
-```hcl
-# providers.tf
-provider "github" {
-  owner = var.github_org
-  token = var.github_token  # or use GITHUB_TOKEN env var
-}
-```
-
-> **Security:** Never commit tokens. Use environment variables or a secrets manager.
-> For CI/CD, the token should be stored in the infrastructure secrets manager (AWS SSM / GCP Secret Manager)
-> and injected at plan/apply time.
+> **Security:** Never commit tokens. Use `export GITHUB_TOKEN="ghp_..."`.
 
 ## Key Variables
 
-### Brand Stack (`stacks/brand/`)
+### Org Stack
 
 ```hcl
-# variables.tf
-variable "github_org" {
-  description = "GitHub organization name for this brand"
-  type        = string
-}
-
-variable "brand_name" {
-  description = "Brand name (must match brands.yaml)"
-  type        = string
-}
-
-variable "default_branch" {
-  description = "Default branch name for new repos"
-  type        = string
-  default     = "main"
-}
+variable "github_org" { type = string }
 
 variable "repos" {
-  description = "Map of repositories to create"
-  type = map(object({
-    description    = optional(string, "")
-    visibility     = optional(string, "private")
-    has_issues     = optional(bool, true)
-    has_wiki       = optional(bool, false)
-    has_projects   = optional(bool, false)
-    template       = optional(string, null)
-    topics         = optional(list(string), [])
-    default_branch = optional(string, "main")
-    branch_protection = optional(object({
-      required_reviews       = optional(number, 1)
-      dismiss_stale_reviews  = optional(bool, true)
-      require_status_checks  = optional(list(string), [])
-      enforce_admins         = optional(bool, false)
-    }), {})
-  }))
-  default = {}
-}
-
-variable "teams" {
-  description = "Map of teams to create"
   type = map(object({
     description = optional(string, "")
-    privacy     = optional(string, "closed")
-    members     = optional(list(string), [])
-    maintainers = optional(list(string), [])
-    repos       = optional(map(string), {})  # repo_name => permission
+    visibility  = optional(string, "private")
+    topics      = optional(list(string), [])
+    auto_init   = optional(bool, false)
+    branch_protection = optional(object({
+      required_reviews      = optional(number, 1)
+      dismiss_stale_reviews = optional(bool, true)
+      require_status_checks = optional(list(string), [])
+      enforce_admins        = optional(bool, false)
+    }), null)
   }))
-  default = {}
+}
+
+variable "actions_secrets" {
+  type      = map(string)
+  sensitive = true
+}
+
+variable "actions_variables" {
+  type = map(string)
+}
+
+variable "environments" {
+  type    = list(string)
+  default = []
 }
 ```
 
-### Example Brand tfvars
+### Example Org tfvars
 
 ```hcl
-# envs/<brand>.tfvars
-github_org = "<brand>-org"
-brand_name = "<brand>"
+# github/stacks/org/terraform.tfvars.example
+github_org = "<org-name>"
 
 repos = {
-  "<brand>-web" = {
-    description = "Web application"
-    visibility  = "private"
-    topics      = ["nextjs", "typescript"]
+  "infra" = {
+    description = "Multi-cloud infrastructure — Terraform/OpenTofu"
+    visibility  = "public"
+    topics      = ["terraform", "opentofu", "infrastructure", "gcp", "aws"]
     branch_protection = {
       required_reviews      = 1
       dismiss_stale_reviews = true
-      require_status_checks = ["ci/test", "ci/lint"]
     }
-  }
-  "<brand>-api" = {
-    description = "API service"
-    visibility  = "private"
-    topics      = ["api", "typescript"]
-  }
-  "<brand>-infra" = {
-    description = "Infrastructure overlays"
-    visibility  = "private"
-    topics      = ["terraform", "infrastructure"]
   }
 }
 
-teams = {
-  "developers" = {
-    description = "Core developers"
-    privacy     = "closed"
-    members     = []  # populated after org setup
-    repos = {
-      "<brand>-web" = "push"
-      "<brand>-api" = "push"
-    }
-  }
-  "admins" = {
-    description = "Organization admins"
-    privacy     = "closed"
-    repos = {
-      "<brand>-web"   = "admin"
-      "<brand>-api"   = "admin"
-      "<brand>-infra" = "admin"
-    }
-  }
+actions_secrets = {
+  GCP_WIF_PROVIDER    = ""   # → GCP Phase 0: tofu output -raw wif_provider_name
+  GCP_ORG_ID          = ""   # → GCP Organization ID (numeric)
+  GCP_BILLING_ACCOUNT = ""   # → Billing Account ID
+  MIRROR_PAT          = ""   # → Fine-grained PAT for public mirror
+}
+
+actions_variables = {
+  GCP_BOOTSTRAP_SA = ""      # → GCP Phase 0: tofu output -raw bootstrap_sa_email
+  GCP_ORG_SA       = ""      # → GCP Phase 0: tofu output -raw org_sa_email
+  GCP_STATE_BUCKET = ""      # → GCP Phase 0: seed_state_bucket_name
+  GCP_BRANDS       = ""      # → JSON array of brand definitions
+  CI_ENABLED       = "true"  # → Set to "true" to enable CI/CD workflows
+}
+
+environments = [
+  "gcp-bootstrap",
+  "gcp-org",
+]
+```
+
+## What the Org Stack Creates
+
+### Repositories (via `module.repos`)
+
+Each repo in the `repos` map gets:
+- `github_repository` — with description, visibility, topics
+- `github_branch_protection` — optional, with required reviews and status checks
+
+### Actions Secrets (`actions.tf`)
+
+Org-level encrypted secrets for CI/CD pipelines. These store sensitive values
+like GCP Workload Identity Federation provider, org ID, and billing account.
+
+```hcl
+resource "github_actions_organization_secret" "this" {
+  for_each        = var.actions_secrets
+  secret_name     = each.key
+  visibility      = "all"
+  plaintext_value = each.value
+}
+```
+
+### Actions Variables (`actions.tf`)
+
+Org-level non-secret variables for CI/CD. These store service account emails,
+state bucket names, brand configs, and feature flags.
+
+```hcl
+resource "github_actions_organization_variable" "this" {
+  for_each      = var.actions_variables
+  variable_name = each.key
+  visibility    = "all"
+  value         = each.value
+}
+```
+
+### Deployment Environments
+
+Used for deploy tracking in the GitHub Actions UI:
+
+```hcl
+resource "github_repository_environment" "this" {
+  for_each    = toset(var.environments)
+  repository  = "infra"
+  environment = each.value
 }
 ```
 
 ## State Management
 
-```hcl
-# backend.tf (brand stack)
-terraform {
-  backend "gcs" {
-    bucket = "<seed-project-state-bucket>"
-    prefix = "providers/github/brand/${var.brand_name}"
-  }
-}
-```
-
-> **Note:** Since `var` is not allowed in backend config, use either:
-> - Terraform workspaces (one per brand)
-> - `-backend-config` flag at init time
-> - A wrapper script that sets the prefix dynamically
-
 ```bash
-# Example: init with dynamic backend key
-terraform init \
-  -backend-config="prefix=providers/github/brand/<brand>"
+cd github/stacks/org
+tofu init -reconfigure \
+  -backend-config="bucket=<gcs-tfstate-bucket>" \
+  -backend-config="prefix=terraform/github/org"
+
+tofu plan
+tofu apply
 ```
+
+| Stack | State Prefix |
+|-------|-------------|
+| Org | `terraform/github/org` |
+| Brand (future) | `terraform/github/brand/<brand>` |
 
 ## Deployment
 
 ```bash
-# Manage the admin org (parent org)
 cd github/stacks/org
-terraform init
-terraform plan
-terraform apply
+export GITHUB_TOKEN="ghp_..."
 
-# Manage a brand's GitHub org
-cd github/stacks/brand
-terraform init -backend-config="prefix=providers/github/brand/<brand>"
-terraform plan -var-file=envs/<brand>.tfvars
-terraform apply -var-file=envs/<brand>.tfvars
+tofu init -reconfigure \
+  -backend-config="bucket=<gcs-tfstate-bucket>" \
+  -backend-config="prefix=terraform/github/org"
+
+tofu plan
+tofu apply
 ```
+
+> **Note:** The org stack uses `terraform.tfvars` (gitignored) instead of
+> per-brand env files, since it manages a single org.
 
 ## What Gets Managed
 
-| Resource | Managed by Terraform? | Notes |
-|----------|----------------------|-------|
-| Org settings (name, description, permissions) | ✅ Yes | Via `github_organization_settings` |
-| Repositories | ✅ Yes | Creation, settings, visibility |
-| Branch protection rules | ✅ Yes | Required reviews, status checks |
-| Teams | ✅ Yes | Structure and repo permissions |
-| Team membership | ⚠️ Partial | Initial setup; day-to-day via GitHub UI |
-| Actions secrets/variables | ✅ Yes | Org-level and repo-level |
-| Webhooks | ✅ Yes | If needed for CI/CD integrations |
-| GitHub Actions workflows | ❌ No | Managed in each app's own repo |
-| Issue templates, CODEOWNERS | ❌ No | Managed in each app's own repo |
+| Resource | Managed? | Notes |
+|----------|----------|-------|
+| Repositories | Yes | Via reusable `repository` module |
+| Branch protection rules | Yes | Required reviews, status checks |
+| Actions secrets (org-level) | Yes | GCP WIF, org ID, billing, PAT |
+| Actions variables (org-level) | Yes | SA emails, state bucket, brands JSON |
+| Deployment environments | Yes | For deploy tracking in Actions UI |
+| Org settings | No | Managed via GitHub dashboard |
+| Teams / membership | No | Managed via GitHub dashboard (future) |
+| Webhooks | No | Not currently needed |
+| GitHub Actions workflows | No | Managed in each app's own repo |
 
 ## CI/CD Integration
 
-Platform stacks can be deployed via GitHub Actions in the `nd-infra` repo:
+The Actions secrets and variables created by this stack power CI/CD workflows
+in other repos. The typical flow:
 
-```yaml
-# .github/workflows/github-platform.yml
-name: GitHub Platform
-on:
-  push:
-    branches: [main]
-    paths: ['github/**']
-  pull_request:
-    paths: ['github/**']
+```
+github/stacks/org (Terraform)
+  ├── Creates: GCP_WIF_PROVIDER secret
+  ├── Creates: GCP_BOOTSTRAP_SA variable
+  └── Creates: GCP_STATE_BUCKET variable
 
-jobs:
-  plan:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        brand: [<brand-a>, <brand-b>]  # from brands.yaml
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - run: |
-          cd github/stacks/brand
-          terraform init -backend-config="prefix=providers/github/brand/${{ matrix.brand }}"
-          terraform plan -var-file=envs/${{ matrix.brand }}.tfvars
+Other repo workflows (.github/workflows/*.yml)
+  ├── Uses: GCP_WIF_PROVIDER → authenticate to GCP via Workload Identity
+  ├── Uses: GCP_BOOTSTRAP_SA → impersonate service account
+  └── Uses: GCP_STATE_BUCKET → configure Terraform backend
 ```

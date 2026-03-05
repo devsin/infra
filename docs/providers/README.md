@@ -32,7 +32,7 @@ Application deployment platforms — each **brand** has its own workspace/accoun
 
 | Provider | Directory | Status | Notes |
 |----------|-----------|--------|-------|
-| **Railway** | `railway/` | 📋 Planned | Projects, services, environments |
+| **Railway** | `railway/` | ✅ Active | Projects, services, environments |
 | *(Render)* | — | — | Addable if needed |
 | *(Fly.io)* | — | — | Addable if needed |
 
@@ -43,7 +43,6 @@ Managed backend platforms — each **brand** has its own project.
 | Provider | Directory | Status | Notes |
 |----------|-----------|--------|-------|
 | **Supabase** | `supabase/` | 📋 Planned | Auth, DB, storage, edge functions |
-| *(Firebase)* | — | — | Addable if needed |
 
 ### Developer Tools
 
@@ -51,7 +50,15 @@ Source control, CI/CD, and dev tooling — each **brand** has its own org.
 
 | Provider | Directory | Status | Notes |
 |----------|-----------|--------|-------|
-| **GitHub** | `github/` | 📋 Planned | Orgs, repos, teams, branch protection |
+| **GitHub** | `github/` | ✅ Active | Repos, Actions secrets/variables |
+
+### CDN / Edge
+
+DNS, CDN, edge security, and object storage — org stack creates zones, brand stack manages records.
+
+| Provider | Directory | Status | Notes |
+|----------|-----------|--------|-------|
+| **Cloudflare** | `cloudflare/` | ✅ Active | DNS, R2 storage, TLS, WAF |
 
 ### Cross-Provider
 
@@ -130,17 +137,17 @@ Brand-scoped providers use a **per-brand stack** pattern. The same Terraform cod
 
 ```
 github/stacks/                      railway/stacks/
-├── org/          # admin org        └── brand/          # per-brand workspace
+├── org/          # admin org        └── brand/          # per-brand project
 └── brand/        # per-brand org        └── envs/
     └── envs/                                ├── <brand-a>.tfvars
         ├── <brand-a>.tfvars                 └── <brand-b>.tfvars
         └── <brand-b>.tfvars
 
-supabase/stacks/
-└── brand/        # per-brand project
-    └── envs/
-        ├── <brand-a>.tfvars
-        └── <brand-b>.tfvars
+cloudflare/stacks/                  supabase/stacks/
+├── org/          # zone creation    └── brand/          # per-brand project
+│   └── envs/                                └── envs/
+└── brand/        # DNS, R2, settings
+    └── envs/         # <brand>-dev/prod
 ```
 
 ### Deployment Example
@@ -162,10 +169,13 @@ All providers share the same state backend (GCS or S3), using different key pref
 | AWS | Phase 0 | `aws/bootstrap/terraform.tfstate` |
 | AWS | Phase 3 (per-brand) | `aws/networking/<brand>/<env>/terraform.tfstate` |
 | GCP | Phase 0 | `terraform/bootstrap/default.tfstate` |
-| GitHub | Admin org | `providers/github/org/terraform.tfstate` |
-| GitHub | Brand | `providers/github/brand/<brand>/terraform.tfstate` |
-| Railway | Brand | `providers/railway/brand/<brand>/terraform.tfstate` |
-| Supabase | Brand | `providers/supabase/brand/<brand>/terraform.tfstate` |
+| Cloudflare | Org | `terraform/cloudflare/org/<org>` |
+| Cloudflare | Brand (prod) | `terraform/cloudflare/<brand>-prod` |
+| Cloudflare | Brand (dev) | `terraform/cloudflare/<brand>-dev` |
+| GitHub | Admin org | `terraform/github/org` |
+| GitHub | Brand | `terraform/github/brand/<brand>` |
+| Railway | Brand | `terraform/railway/<brand>` |
+| Supabase | Brand | `terraform/supabase/brand/<brand>` |
 
 ## Adding a New Provider
 
@@ -191,6 +201,7 @@ To add a new provider (e.g., Fly.io):
 
 | Provider | Docs |
 |----------|------|
+| Cloudflare | [Cloudflare Platform](./cloudflare/README.md) |
 | GitHub | [GitHub Platform](./github/README.md) |
 | Railway | [Railway Platform](./railway/README.md) |
 | Supabase | [Supabase Platform](./supabase/README.md) |
@@ -201,8 +212,9 @@ To add a new provider (e.g., Fly.io):
 |----------|-------------------|---------|
 | AWS | `hashicorp/aws` | `~> 6.0` |
 | GCP | `hashicorp/google` + `hashicorp/google-beta` | `~> 6.0` |
+| Cloudflare | `cloudflare/cloudflare` | `~> 5.0` |
 | GitHub | `integrations/github` | `~> 6.0` |
-| Railway | `terraform-community-providers/railway` | `~> 0.4` |
+| Railway | `terraform-community-providers/railway` | `~> 0.6` |
 | Supabase | `supabase/supabase` | TBD |
 | DigitalOcean | `digitalocean/digitalocean` | `~> 2.0` |
 | Linode | `linode/linode` | `~> 2.0` |

@@ -1,0 +1,135 @@
+# ==============================================================================
+# Cloudflare Brand Stack — <brand> <env> config template
+#
+# Copy and fill in:
+#   cp envs/brand-1.tfvars.example envs/<brand>-prod.tfvars
+#   cp envs/brand-1.tfvars.example envs/<brand>-dev.tfvars
+#
+# Authentication:
+#   export TF_VAR_cloudflare_api_token="<token>"
+#
+# Apply order:
+#   1. cloudflare/stacks/org  → creates zones, outputs zone IDs
+#   2. cloudflare/stacks/brand → reads zone IDs from org remote state (automatic)
+#
+# Init (separate state per brand × env):
+#   tofu init -reconfigure \
+#     -backend-config="bucket=<state-bucket>" \
+#     -backend-config="prefix=terraform/cloudflare/<brand>-<env>"
+#
+# Plan / Apply:
+#   tofu plan  -var-file=envs/<brand>-<env>.tfvars
+#   tofu apply -var-file=envs/<brand>-<env>.tfvars
+# ==============================================================================
+
+account_id       = "<cloudflare-account-id>"
+org_state_bucket = "<state-bucket>"   # same bucket used for org stack init
+org_name         = "<org-slug>"       # e.g. nd — must match org stack envs key
+suborg_name      = ""                 # e.g. core — leave empty to omit from bucket names
+brand_name       = "<brand-slug>"     # e.g. myapp
+environment      = "prod"             # prod | dev
+
+# ---------------------------------------------------------------------------
+# DNS zones — keys must match cloudflare/stacks/org zones map keys
+# ---------------------------------------------------------------------------
+
+zones = {
+  primary = {
+    zone_name            = "<brand-domain.com>"
+    manage_zone_settings = true  # false in dev — prod owns TLS/WAF/security settings
+
+    # TLS / SSL  (defaults match free-plan best-practice — override only if needed)
+    ssl_mode                    = "full"
+    min_tls_version             = "1.2"
+    tls_1_3                     = true
+    always_use_https            = true
+    automatic_https_rewrites    = true
+    total_tls_enabled           = true
+    security_level              = "medium"
+    waf_managed_ruleset_enabled = true
+    waf_sensitivity_level       = "default"
+    brotli                      = true
+    http3                       = true
+    browser_cache_ttl           = 14400
+    dnssec_enabled              = false
+
+    dns_records = {
+      # PROD example
+      api = {
+        name    = "api"
+        type    = "CNAME"
+        content = "<api-service.up.railway.app>"
+        proxied = true
+      }
+      web = {
+        name    = "app"
+        type    = "CNAME"
+        content = "<web-service.up.railway.app>"
+        proxied = true
+      }
+      # DEV example — use subdomains like dev.api.<brand>.com / dev.<brand>.com
+      # api-dev = {
+      #   name    = "dev.api"
+      #   type    = "CNAME"
+      #   content = "<api-dev-service.up.railway.app>"
+      #   proxied = true
+      # }
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# R2 buckets — named: <org>[-<suborg>]-<brand>-<env>-<key>
+# Example key "assets" → "<org>-<brand>-prod-assets"
+# ---------------------------------------------------------------------------
+
+r2_buckets = {
+  assets = {
+    location      = "enam" # enam | wnam | eeur | weur | apac | oc
+    storage_class = "Standard"
+
+    cors_rules = [
+      {
+        allowed = {
+          methods = ["GET", "HEAD"]
+          origins = ["https://<brand-domain.com>", "https://app.<brand-domain.com>"]
+          headers = ["Content-Type", "Range"]
+        }
+        expose_headers  = ["Content-Length", "Content-Range", "ETag"]
+        max_age_seconds = 86400
+      }
+    ]
+
+    custom_domain = {
+      domain     = "assets.<brand-domain.com>"
+      zone_label = "primary" # must match a key in var.zones above
+      enabled    = true
+      min_tls    = "TLSv1.2"
+    }
+  }
+
+  uploads = {
+    location      = "enam"
+    storage_class = "Standard"
+
+    lifecycle_rules = [
+      {
+        id                                           = "abort-incomplete-uploads"
+        enabled                                      = true
+        prefix                                       = ""
+        abort_incomplete_multipart_upload_after_days = 7
+      },
+      {
+        id                = "expire-tmp"
+        enabled           = true
+        prefix            = "tmp/"
+        delete_after_days = 30
+      }
+    ]
+  }
+
+  # backups = {
+  #   location      = "enam"
+  #   storage_class = "InfrequentAccess"
+  # }
+}

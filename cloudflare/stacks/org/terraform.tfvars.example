@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------
+# cloudflare/stacks/org — terraform.tfvars.example
+#
+# Copy to envs/<org>.tfvars and fill in your actual values.
+#
+# Run:
+#   export TF_VAR_cloudflare_api_token="<your-api-token>"
+#   tofu init -reconfigure \
+#     -backend-config="bucket=<gcs-tfstate-bucket>" \
+#     -backend-config="prefix=terraform/cloudflare/org/<org>"
+#   tofu plan  -var-file=envs/<org>.tfvars
+#   tofu apply -var-file=envs/<org>.tfvars
+#
+# After first apply, copy the nameservers to your domain registrar.
+# ---------------------------------------------------------------------------
+
+account_id = "<cloudflare-account-id>"
+
+# ---------------------------------------------------------------------------
+# Zones — one per domain
+#
+# Key = label used by brand stacks to reference this zone.
+# Zone IDs and nameservers are output after apply.
+# ---------------------------------------------------------------------------
+
+zones = {
+  mybrand = {
+    zone_name = "mybrand.com"
+    type      = "full"     # "full" (default) or "partial"
+  }
+
+  # Add more zones as needed:
+  # anotherbrand = {
+  #   zone_name = "anotherbrand.io"
+  #   type      = "full"
+  # }
+}

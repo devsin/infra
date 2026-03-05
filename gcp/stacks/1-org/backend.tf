@@ -1,14 +1,17 @@
 # ==============================================================================
-# Backend Configuration — Terraform State in GCS
+# GCP Organization — Remote Backend (GCS)
 #
-# Uses the seed project's GCS bucket created in Phase 0.
-# Fill in actual values from Phase 0 outputs:
-#   terraform -chdir=../0-bootstrap output seed_state_bucket_name
+# State is stored in the same seed GCS bucket created in Phase 0.
+# Init with:
+#   tofu init -reconfigure \
+#     -backend-config="bucket=<seed-state-bucket>" \
+#     -backend-config="prefix=terraform/gcp/org"
+#
+# Get the bucket name from Phase 0 output:
+#   tofu -chdir=../0-bootstrap output seed_state_bucket_name
 # ==============================================================================
 
 terraform {
   backend "gcs" {
-    bucket = "REDACTED" # → Phase 0: seed_state_bucket_name
-    prefix = "terraform/org"
   }
 }

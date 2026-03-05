@@ -31,17 +31,22 @@ brands:
   #     github_org: acme-org
   #     railway_workspace: acme
   #     supabase_org_id: org-xxxxx
+  #     cloudflare_account_id: xxxxx    # Cloudflare account for this brand
   #
   #   # Per-environment configuration
+  #   #   SUBDOMAIN PATTERN: Dev uses single-level subdomains (e.g., api-dev)
+  #   #   NOT multi-level (e.g., dev.api) — required for Cloudflare Free plan SSL.
   #   envs:
   #     dev:
   #       web_domain: dev.acme.com
-  #       api_domain: dev.api.acme.com
+  #       api_domain: api-dev.acme.com
+  #       cdn_domain: cdn-dev.acme.com
   #       supabase_url: https://xxxxxx.supabase.co
   #       supabase_ref: xxxxxx
   #     prod:
   #       web_domain: acme.com
   #       api_domain: api.acme.com
+  #       cdn_domain: cdn.acme.com
   #       supabase_url: https://yyyyyy.supabase.co
   #       supabase_ref: yyyyyy
 
@@ -51,6 +56,7 @@ brands:
 #   providers.github_org           — GitHub organization for this brand
 #   providers.railway_workspace    — Railway workspace/team for this brand
 #   providers.supabase_org_id      — Supabase organization ID for this brand
+#   providers.cloudflare_account_id — Cloudflare account for this brand's zones
 #   providers.digitalocean_team    — (future) DigitalOcean team
 #   providers.linode_account       — (future) Linode account
 #

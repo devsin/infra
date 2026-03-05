@@ -45,7 +45,7 @@ Before starting Phase 0:
 ### Step 2: Configure the AWS CLI Profile
 
 ```bash
-aws configure --profile nd
+aws configure --profile <profile>
 ```
 
 Enter the following when prompted:
@@ -62,7 +62,7 @@ This writes to `~/.aws/config` and `~/.aws/credentials`.
 ### Step 3: Set the Profile for Terraform
 
 ```bash
-export AWS_PROFILE=nd
+export AWS_PROFILE=<profile>
 ```
 
 Verify it works:
@@ -74,7 +74,7 @@ aws sts get-caller-identity
 You should see your account ID and IAM user ARN.
 
 > **Post-Phase 2:** Once IAM Identity Center is deployed, switch to SSO authentication
-> (`aws configure sso --profile nd`) and **delete the IAM access keys**.
+> (`aws configure sso --profile <profile>`) and **delete the IAM access keys**.
 
 ## 📁 Stack Structure
 
@@ -352,7 +352,7 @@ output "region" {
 
 ```bash
 # Set your AWS profile
-export AWS_PROFILE=nd
+export AWS_PROFILE=<profile>
 
 # Verify credentials are working
 aws sts get-caller-identity

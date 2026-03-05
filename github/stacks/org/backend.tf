@@ -5,8 +5,5 @@
 # ==============================================================================
 
 terraform {
-  backend "gcs" {
-    bucket = "REDACTED"
-    prefix = "terraform/github/org"
-  }
+  backend "gcs" {}
 }

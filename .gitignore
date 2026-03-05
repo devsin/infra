@@ -10,6 +10,8 @@ crash.*.log
 # terraform.tfvars is gitignored; use *.auto.tfvars for CI-committed config
 terraform.tfvars
 !terraform.tfvars.example
+**/envs/*.tfvars
+!**/envs/*.tfvars.example
 
 # Brand config (contains real org/brand names)
 brands.yaml

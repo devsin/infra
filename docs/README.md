@@ -24,8 +24,9 @@ Each brand has its **own tenant** (org, workspace, or project). The parent compa
 
 | Provider | Directory | Purpose | Status |
 |----------|-----------|---------|--------|
-| **GitHub** | `github/` | Orgs, repos, teams, branch protection | 📋 Planned |
-| **Railway** | `railway/` | Projects, services, environments | 📋 Planned |
+| **Cloudflare** | `cloudflare/` | DNS, CDN, R2 storage, TLS, WAF | ✅ Active |
+| **GitHub** | `github/` | Orgs, repos, Actions secrets/variables | ✅ Active |
+| **Railway** | `railway/` | Projects, services, environments | ✅ Active |
 | **Supabase** | `supabase/` | Auth, DB, storage, edge functions | 📋 Planned |
 
 > See the [Providers Guide](./providers/README.md) for full details, categories, and how to add new providers.
@@ -62,6 +63,7 @@ All naming, accounts/projects, and brands are **driven by variables** — no har
 | [Providers Guide](./providers/README.md) | All providers — phases, brands, adding new |
 | [AWS Phases](./providers/aws/) | AWS phase-by-phase deployment |
 | [GCP Phases](./providers/gcp/) | GCP phase-by-phase deployment |
+| [Cloudflare](./providers/cloudflare/README.md) | DNS, CDN, R2 storage, TLS |
 | [GitHub](./providers/github/README.md) | GitHub org management |
 | [Railway](./providers/railway/README.md) | Railway workspace management |
 | [Supabase](./providers/supabase/README.md) | Supabase project management |
@@ -101,16 +103,27 @@ All naming, accounts/projects, and brands are **driven by variables** — no har
 │   │   └── 5-gke/                 #     GKE clusters
 │   └── modules/
 │
+├── cloudflare/                    # CDN: Cloudflare
+│   ├── stacks/
+│   │   ├── org/                   #     Zone creation (one per domain)
+│   │   │   └── envs/              #       <org>.tfvars
+│   │   └── brand/                 #     DNS, R2, zone settings
+│   │       └── envs/              #       <brand>-dev.tfvars, <brand>-prod.tfvars
+│   └── modules/
+│       ├── zone/                  #     DNS, TLS, WAF, DNSSEC
+│       └── r2-bucket/             #     R2 + CORS + lifecycle + custom domain
+│
 ├── github/                        # Tool: GitHub
 │   ├── stacks/
-│   │   ├── org/                   #     Admin org settings
-│   │   └── brand/                 #     Per-brand GitHub org
-│   │       └── envs/              #       <brand>.tfvars (one per brand)
+│   │   ├── org/                   #     Repos, Actions secrets/variables
+│   │   └── brand/                 #     Per-brand GitHub org (future)
+│   │       └── envs/
 │   └── modules/
+│       └── repository/            #     Reusable repo module
 │
 ├── railway/                       # PaaS: Railway
 │   ├── stacks/
-│   │   └── brand/                 #     Per-brand workspace
+│   │   └── brand/                 #     Per-brand project (services, envs, vars)
 │   │       └── envs/
 │   └── modules/
 │
@@ -140,9 +153,10 @@ All naming, accounts/projects, and brands are **driven by variables** — no har
 │   ├── architecture/              #   Architecture decisions
 │   └── providers/                 #   Per-provider documentation
 │       ├── aws/                   #     AWS phase guides
+│       ├── cloudflare/            #     Cloudflare DNS, R2, TLS
 │       ├── gcp/                   #     GCP phase guides
-│       ├── github/                #     GitHub management
-│       ├── railway/               #     Railway management
+│       ├── github/                #     GitHub org management
+│       ├── railway/               #     Railway services
 │       ├── supabase/              #     Supabase management
 │       └── hybrid/                #     Cross-provider
 │
@@ -163,9 +177,10 @@ All naming, accounts/projects, and brands are **driven by variables** — no har
 
 ### Brand-Scoped Providers
 1. Read the [Providers Guide](./providers/README.md)
-2. [GitHub](./providers/github/README.md) — set up orgs per brand
-3. [Railway](./providers/railway/README.md) — set up workspaces per brand
-4. [Supabase](./providers/supabase/README.md) — set up projects per brand
+2. [Cloudflare](./providers/cloudflare/README.md) — DNS zones, R2 storage, TLS/WAF
+3. [GitHub](./providers/github/README.md) — repos, Actions secrets/variables
+4. [Railway](./providers/railway/README.md) — projects, services, environments
+5. [Supabase](./providers/supabase/README.md) — set up projects per brand
 
 > All providers can be deployed independently. Brand-scoped providers use
 > `-var-file=envs/<brand>.tfvars` for per-brand deployment.

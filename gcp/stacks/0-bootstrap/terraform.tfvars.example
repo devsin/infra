@@ -6,6 +6,13 @@
 #
 # NOTE: terraform.tfvars is gitignored to prevent leaking sensitive values.
 #
+# Usage:
+#   tofu init \
+#     -backend-config="bucket=<seed-state-bucket>" \
+#     -backend-config="prefix=terraform/gcp/bootstrap"
+#   tofu plan
+#   tofu apply
+#
 # In CI, org_id and billing_account are injected via TF_VAR_* env vars
 # from GitHub Actions secrets (GCP_ORG_ID, GCP_BILLING_ACCOUNT).
 # Non-sensitive values are committed in bootstrap.auto.tfvars.

@@ -20,8 +20,9 @@ Each brand has its **own tenant** — the parent company is an admin member:
 
 | Provider | Directory | Status | Purpose |
 |----------|-----------|--------|---------|
-| **GitHub** | `github/` | 📋 Planned | Per-brand GitHub org management |
-| **Railway** | `railway/` | 📋 Planned | Per-brand PaaS (projects, services) |
+| **Cloudflare** | `cloudflare/` | ✅ Active | DNS, CDN, R2 storage, TLS, WAF |
+| **GitHub** | `github/` | ✅ Active | Repos, Actions secrets/variables |
+| **Railway** | `railway/` | ✅ Active | Per-brand PaaS (projects, services) |
 | **Supabase** | `supabase/` | 📋 Planned | Per-brand BaaS (auth, DB, storage) |
 
 > See the [Providers Guide](../providers/README.md) for full details and how to add new providers.
@@ -280,6 +281,7 @@ This project uses two fundamentally different provider models. All providers are
 │     Each brand owns its own tenant/org/workspace             │
 │     Parent company is an admin member                        │
 │                                                              │
+│     cloudflare/   ─ Org stack (zones) + Brand (DNS, R2, TLS) │
 │     github/       ─ Per-brand GitHub orgs                    │
 │     railway/      ─ Per-brand Railway workspaces             │
 │     supabase/     ─ Per-brand Supabase projects              │

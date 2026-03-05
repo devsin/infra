@@ -1,0 +1,81 @@
+# ==============================================================================
+# Railway Brand Stack — Example Variable Values
+#
+# Copy to envs/<brand>.tfvars and fill in your actual values:
+#   cp terraform.tfvars.example envs/<brand>.tfvars
+#
+# Authentication:
+#   export RAILWAY_TOKEN="<your-workspace-token>"
+#
+# Init:
+#   tofu init -backend-config="bucket=<state-bucket>" \
+#             -backend-config="prefix=terraform/railway/<brand>"
+#
+# Plan:
+#   tofu plan -var-file=envs/<brand>.tfvars
+#
+# NOTE: tfvars files are gitignored to prevent leaking sensitive values.
+# ==============================================================================
+
+# --- Required ---
+
+brand_name = "<brand>" # e.g. "myapp"
+
+# workspace_id = "<workspace-uuid>"  # Required if token has access to multiple workspaces
+
+# --- Environments ---
+
+environments = ["dev", "prod"]
+
+# --- Services ---
+
+services = {
+  "<brand>-api" = {
+    source_repo   = "<github-org>/<brand>-api"
+    source_branch = "main"
+
+    variables = {
+      dev = {
+        PORT         = "8080"
+        DATABASE_URL = "${{<brand>-db.DATABASE_URL}}" # Railway reference variable
+        # Add more env vars as needed
+      }
+      prod = {
+        PORT         = "8080"
+        DATABASE_URL = "${{<brand>-db.DATABASE_URL}}"
+      }
+    }
+
+    custom_domains = {
+      dev  = ["api.dev.<brand-domain>"]
+      prod = ["api.<brand-domain>"]
+    }
+  }
+
+  "<brand>-web" = {
+    source_repo   = "<github-org>/<brand>-web"
+    source_branch = "main"
+
+    variables = {
+      dev = {
+        # PUBLIC_API_URL = "https://api.dev.<brand-domain>"
+      }
+      prod = {
+        # PUBLIC_API_URL = "https://api.<brand-domain>"
+      }
+    }
+
+    custom_domains = {
+      dev  = ["dev.<brand-domain>"]
+      prod = ["<brand-domain>", "www.<brand-domain>"]
+    }
+  }
+
+  "<brand>-db" = {
+    # No source — Railway-managed PostgreSQL uses a volume
+    volume = {
+      name       = "<brand>-db-data"
+      mount_path = "/var/lib/postgresql/data"
+    }
+  }
+}

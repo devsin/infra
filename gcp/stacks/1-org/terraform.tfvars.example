@@ -3,6 +3,13 @@
 #
 # Copy this file to terraform.tfvars and fill in your values.
 # The state_bucket comes from Phase 0 output: seed_state_bucket_name
+#
+# Usage:
+#   tofu init \
+#     -backend-config="bucket=<seed-state-bucket>" \
+#     -backend-config="prefix=terraform/gcp/org"
+#   tofu plan
+#   tofu apply
 # ==============================================================================
 
 state_bucket = "bkt-prj-b-seed-XXXX-tfstate" # Phase 0: terraform output seed_state_bucket_name

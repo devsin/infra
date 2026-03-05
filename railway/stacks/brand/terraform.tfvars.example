@@ -1,0 +1,114 @@
+# ---------------------------------------------------------------------------
+# railway/stacks/brand — terraform.tfvars.example
+#
+# Copy to envs/<brand>.tfvars and fill in your actual values.
+#
+# Run:
+#   export TF_VAR_token="<railway-api-token>"
+#   tofu init -reconfigure \
+#     -backend-config="bucket=<gcs-tfstate-bucket>" \
+#     -backend-config="prefix=terraform/railway/<brand>"
+#   tofu plan  -var-file=envs/<brand>.tfvars
+#   tofu apply -var-file=envs/<brand>.tfvars
+#
+# For importing existing resources, see IMPORT.md.
+# ---------------------------------------------------------------------------
+
+brand_name   = "<brand>"
+environments = ["dev", "prod"]    # First becomes the default environment
+region       = "europe-west4"     # or us-west1, us-east4, asia-southeast1, etc.
+
+# ---------------------------------------------------------------------------
+# Services
+#
+# Each service can deploy from a GitHub repo (source_repo) or a Docker image
+# (source_image). Variables and custom domains are per-environment maps.
+#
+# SUBDOMAIN PATTERN (Cloudflare Free plan compatibility):
+#   Dev subdomains must be single-level: api-dev.<domain>, NOT dev.api.<domain>
+#   See docs/providers/cloudflare/README.md for details.
+# ---------------------------------------------------------------------------
+
+services = {
+  # --- API service (from GitHub repo) ---
+  "<brand>-api" = {
+    source_repo = "<github-org>/<brand>-api"
+
+    variables = {
+      dev = {
+        PORT              = "8080"
+        ENVIRONMENT       = "development"
+        DATABASE_URL      = "${{<brand>-db.DATABASE_URL}}"
+        CORS_ORIGIN       = "https://dev.<brand-domain>"
+        PUBLIC_API_URL    = "https://api-dev.<brand-domain>"
+      }
+      prod = {
+        PORT              = "8080"
+        ENVIRONMENT       = "production"
+        DATABASE_URL      = "${{<brand>-db.DATABASE_URL}}"
+        CORS_ORIGIN       = "https://<brand-domain>"
+        PUBLIC_API_URL    = "https://api.<brand-domain>"
+      }
+    }
+
+    custom_domains = {
+      dev  = ["api-dev.<brand-domain>"]
+      prod = ["api.<brand-domain>"]
+    }
+  }
+
+  # --- Web frontend (from GitHub repo) ---
+  "<brand>-web" = {
+    source_repo = "<github-org>/<brand>-web"
+
+    variables = {
+      dev = {
+        PUBLIC_API_URL = "https://api-dev.<brand-domain>"
+      }
+      prod = {
+        PUBLIC_API_URL = "https://api.<brand-domain>"
+      }
+    }
+
+    custom_domains = {
+      dev  = ["dev.<brand-domain>"]
+      prod = ["<brand-domain>"]
+    }
+  }
+
+  # --- Database (from Docker image, with volume) ---
+  "<brand>-db" = {
+    source_image = "ghcr.io/railwayapp-templates/postgres-ssl:17"
+
+    volume = {
+      mount_path = "/var/lib/postgresql/data"
+      size_mb    = 10240   # 10 GB
+    }
+
+    variables = {
+      dev = {
+        POSTGRES_USER     = "<brand>"
+        POSTGRES_DB       = "<brand>"
+        POSTGRES_PASSWORD = "<generate-a-password>"
+        PGDATA            = "/var/lib/postgresql/data/pgdata"
+      }
+      prod = {
+        POSTGRES_USER     = "<brand>"
+        POSTGRES_DB       = "<brand>"
+        POSTGRES_PASSWORD = "<generate-a-password>"
+        PGDATA            = "/var/lib/postgresql/data/pgdata"
+      }
+    }
+  }
+
+  # --- Worker (cron job example, uncomment if needed) ---
+  # "<brand>-worker" = {
+  #   source_repo   = "<github-org>/<brand>-worker"
+  #   cron_schedule = "0 * * * *"   # Every hour
+  #
+  #   variables = {
+  #     dev  = { DATABASE_URL = "${{<brand>-db.DATABASE_URL}}" }
+  #     prod = { DATABASE_URL = "${{<brand>-db.DATABASE_URL}}" }
+  #   }
+  # }
+}
